@@ -1,0 +1,5 @@
+config t
+interface loopback50
+ip address 50.1.1.1 255.255.255.255
+no shutdown
+exit

@@ -1,0 +1,60 @@
+import napalm
+from tabulate import tabulate
+from creds import username,password
+
+def send_config():
+    driver_ios = napalm.get_network_driver("ios")
+    driver_iosxr = napalm.get_network_driver("iosxr")
+
+    device_list = [
+        ["192.168.2.14", "ios", "switch"],
+    ]
+
+    network_devices = []
+    for device in device_list:
+        hostname, device_type, _ = device
+        device_details = {
+            "hostname": hostname,
+            "username": "pinyu",
+            "password": password,
+        }
+        if device_type == "ios":
+            network_devices.append(driver_ios(**device_details))
+        elif device_type == "iosxr":
+            network_devices.append(driver_iosxr(**device_details))
+
+    #devices_table = [["hostname", "vendor", "model", "uptime", "serial_number"]]
+    
+
+    for device in network_devices:
+        print(f"Connecting to {device.hostname}...")
+        try:
+            device.open()
+            print("configuring device")
+            device.load_merge_candidate(filename='07_config.txt')
+            print("\nDiff:")
+            print(device.compare_config())
+        except Exception as err:
+            print(f"Error connecting to {device.hostname}: {err}")
+            continue
+        if len(device.compare_config()) > 0:
+            # You can commit or discard the candidate changes.
+            try:
+                choice = input("\nWould you like to commit these changes? [yN]: ")
+            except NameError:
+                choice = input("\nWould you like to commit these changes? [yN]: ")
+            if choice == "y":
+                print("Committing ...")
+                device.commit_config()
+            else:
+                print("Discarding ...")
+                device.discard_config()
+        else:
+            print("no config diffrence")        
+        # close the session with the device.
+        device.close()
+        print("Done.")
+
+
+if __name__ == "__main__":
+    send_config()
