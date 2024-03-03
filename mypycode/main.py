@@ -102,11 +102,12 @@ def generate_base_config(device_name: str):
 #pprint(device_base_config)
         
 # Example usage
-inteface_running_config=InterfaceActions.get_interface_running_config('192.168.2.21',['Ethernet0/4'])
-pprint(inteface_running_config)        
+#inteface_running_config=InterfaceActions.get_interface_running_config('192.168.2.21',['Ethernet0/4'])
+#pprint(inteface_running_config)        
 
-#config=interfaceActions.reset_interface_config(interfaces=['eth0/1','eth0/2'])
+config=InterfaceActions.reset_interface_config('192.168.2.21',interfaces=['Ethernet0/4','Ethernet0/2'])
 #config=config['reset_interface_config']
+pprint(config)
 
 #config=interfaceActions.disable_interface(interfaces=['eth0/4','eth0/5'])
 #config=config['disable_interface_config']  

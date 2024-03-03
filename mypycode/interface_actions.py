@@ -21,8 +21,8 @@ class InterfaceActions:
             result: interfaces_config and interfaces_list in list format'''
         try:
             handler = NetmikoDeviceHandler(device_name)
-            device_interfaces_list=InterfaceActions.get_device_interface_list(device_name)
-            device_interfaces_list=device_interfaces_list['device_interfaces_list']
+            device_interfaces=InterfaceActions.get_device_interface_list(device_name)
+            device_interfaces_list=device_interfaces['device_interfaces_list']
             connection = handler.connect()
             interfaces_config = []
             interfaces_list = interfaces
@@ -42,15 +42,21 @@ class InterfaceActions:
             return f"Failed to get {device_name}: {interface} running config.\n due to an error{e}"
 
 
-    def reset_interface_config(interfaces: list):
+    def reset_interface_config(device_name: str, interfaces: list):
         ''' This function will reset the interface to default
             param: device_name or ip as string
             param: interface/interfaces s as list
             result: interfaces_config and interfaces_list in list format'''
         try:
+            device_interfaces=InterfaceActions.get_device_interface_list(device_name)
+            device_interfaces_list=device_interfaces['device_interfaces_list']
             reset_interface_config=[]
             interfaces_list = interfaces
             for interface in interfaces:
+                if interface not in device_interfaces_list:
+                    print(f"Interface {interface} not found on the {device_name}")
+                    print(f'List of interfaces available: {device_interfaces_list}')
+                    continue                
                 reset_interface_config.append([
                 f'default interface {interface}',
                 f'interface {interface}',
@@ -63,15 +69,21 @@ class InterfaceActions:
             return f'failed to generate reset interface config due to Error: {e}'
 
 
-    def disable_interface(interfaces: list):
+    def disable_interface(device_name: str, interfaces: list):
         ''' This function will shutdown the interface
             param: device_name or ip as string
             param: interface/interfaces s as list
             result: interfaces_config and interfaces_list in list format'''
         try:
+            device_interfaces=InterfaceActions.get_device_interface_list(device_name)
+            device_interfaces_list=device_interfaces['device_interfaces_list']
             disable_interface_config=[]
             interfaces_list = interfaces
             for interface in interfaces:
+                if interface not in device_interfaces_list:
+                    print(f"Interface {interface} not found on the {device_name}")
+                    print(f'List of interfaces available: {device_interfaces_list}')
+                    continue                
                 disable_interface_config.append([
                     f'interface {interface}',
                     f'shutdown'    
@@ -84,15 +96,21 @@ class InterfaceActions:
             return f'failed to get disable config due to Error: {e}'
         
 
-    def enable_interface(interfaces: list):
+    def enable_interface(device_name: str, interfaces: list):
         ''' This function will shutdown the interface
             param: device_name or ip as string
             param: interface/interfaces s as list
             result: interfaces_config and interfaces_list in list format'''
         try:
+            device_interfaces=InterfaceActions.get_device_interface_list(device_name)
+            device_interfaces_list=device_interfaces['device_interfaces_list']
             enable_interface_config=[]
             interfaces_list = interfaces
             for interface in interfaces:
+                if interface not in device_interfaces_list:
+                    print(f"Interface {interface} not found on the {device_name}")
+                    print(f'List of interfaces available: {device_interfaces_list}')
+                    continue                
                 enable_interface_config.append([
                     f'interface {interface}',
                     f'shutdown'    
