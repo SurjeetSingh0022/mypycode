@@ -35,25 +35,27 @@ class NetmikoDeviceHandler:
         
 
 
-import telnetlib
+
+from telnetlib import Telnet
 import time
 
 class ConsoleTelnet:
     def __init__(self, device_name, telnet_port):
+        self.host='vracks.lab.local'
         self.device_name = device_name
         self.port = telnet_port
-        self.timeout = 120
+        self.timeout = 30
         self.tn = None
 
     def connect(self):
         try:
-            self.tn = telnetlib.Telnet(self.device_name, self.port, self.timeout)
+            self.tn = Telnet(self.host, self.port, self.timeout)
             return self
         except Exception as e:
             print(f"An error occurred: {e}")
             return None
 
-    def intial_connection(self):
+    def initial_connection(self, command):
         if self.tn is None:
             print("Not connected to the device. Please connect first.")
             return None
@@ -65,17 +67,19 @@ class ConsoleTelnet:
         self.tn.write(b"\r")
         if self.tn.read_until(b">") or self.tn.read_until(b"#"):
             print(f'connected to device')
-            self.tn.write(b"show ip int brief\n")
+            self.tn.write(command.encode('ascii'))
+            self.tn.write(b"\n")
             time.sleep(2)
             output = self.tn.read_very_eager().decode('ascii')
+            return output
+ 
         self.tn.write(b"exit\n") 
 
 # Usage:
-handler = ConsoleTelnet('vracks.lab.local','32776')
+handler = ConsoleTelnet('rtr01','32776')
 connection = handler.connect()
 if connection is not None:
-    output = connection.intial_connection('show ip int brief')
-    print(output)        
+    output = connection.initial_connection('show ip int brief')
+    print(output)
 
-    
 
