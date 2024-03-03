@@ -1,10 +1,13 @@
 from netmiko import ConnectHandler
-from creds import username, password
+from creds import *
+from telnetlib import Telnet
+import time
+
 
 class NetmikoDeviceHandler:
-    def __init__(self, ip):
+    def __init__(self, device_name):
         self.device_type = 'cisco_ios'
-        self.device_name = ip
+        self.device_name = device_name
         self.username = username
         self.password = password
 
@@ -29,3 +32,50 @@ class NetmikoDeviceHandler:
 #if connection is not None:
 #    output = connection.send_command('show ip int brief')
 #    print(output)
+        
+
+
+import telnetlib
+import time
+
+class ConsoleTelnet:
+    def __init__(self, device_name, telnet_port):
+        self.device_name = device_name
+        self.port = telnet_port
+        self.timeout = 120
+        self.tn = None
+
+    def connect(self):
+        try:
+            self.tn = telnetlib.Telnet(self.device_name, self.port, self.timeout)
+            return self
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            return None
+
+    def intial_connection(self):
+        if self.tn is None:
+            print("Not connected to the device. Please connect first.")
+            return None
+        self.tn.write(b"\n")
+        self.tn.read_until(b"Would you like to enter the initial configuration dialog? [yes/no]:")
+        self.tn.write(b"no\n")
+        time.sleep(5)
+        self.tn.read_until(b"Press RETURN to get started!")
+        self.tn.write(b"\r")
+        if self.tn.read_until(b">") or self.tn.read_until(b"#"):
+            print(f'connected to device')
+            self.tn.write(b"show ip int brief\n")
+            time.sleep(2)
+            output = self.tn.read_very_eager().decode('ascii')
+        self.tn.write(b"exit\n") 
+
+# Usage:
+handler = ConsoleTelnet('vracks.lab.local','32776')
+connection = handler.connect()
+if connection is not None:
+    output = connection.intial_connection('show ip int brief')
+    print(output)        
+
+    
+
