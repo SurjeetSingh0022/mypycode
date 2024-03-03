@@ -1,7 +1,6 @@
 from handler import NetmikoDeviceHandler
 from interface_actions import InterfaceActions
 from pprint import pprint
-from interface_actions import interfaceActions
 
 
 def get_device_facts(device_name: str): 
@@ -33,34 +32,7 @@ def get_device_facts(device_name: str):
 #config = get_device_facts(device_name='192.168.2.21') 
 #pprint(config)
     
-
-def get_device_interface_list(device_name: str): 
-    ''' This function will get list of available interfaces,
-        their ip_address and status 
-        i.e eth0/0,eth0/1
-        param: device_name or ip as string
-        result: interface list, interface_ip_list, interface_status_list'''
-    try:
-        handler = NetmikoDeviceHandler(device_name)
-        connection = handler.connect()
-        interface_list = []
-        interface_ip_list = {}
-        interface_status_list = {}
-        output = connection.send_command('show ip inter brief', use_textfsm=True)
-        if output is not None:
-            for item in output:
-                interface_list.append(item['interface'])
-                interface_ip_list[item['interface']] = item['ip_address']
-                interface_status_list[item['interface']] = item['proto']
-            if interface_list:
-                return {"interface_list": interface_list, "interface_ip_list": interface_ip_list, "interface_status_list": interface_status_list}       
-    except Exception as e:
-        return f'failed to get interface list due to Error: {e}' 
-
-# execution to test above function    
-#config = get_device_interface_list(device_name='192.168.2.21')
-#pprint(config['interface_status_list'])
-
+    
 def generate_base_config(device_name: str):
     '''This function generates base/minimal config for IOL RTR'''
     try:
@@ -128,6 +100,10 @@ def generate_base_config(device_name: str):
 # Example usage
 #device_base_config=generate_base_config('RTR01')
 #pprint(device_base_config)
+        
+# Example usage
+inteface_running_config=InterfaceActions.get_interface_running_config('192.168.2.21',['Ethernet0/4'])
+pprint(inteface_running_config)        
 
 #config=interfaceActions.reset_interface_config(interfaces=['eth0/1','eth0/2'])
 #config=config['reset_interface_config']
@@ -136,7 +112,11 @@ def generate_base_config(device_name: str):
 #config=config['disable_interface_config']  
 
 #config=interfaceActions.enable_interface(interfaces=['eth0/1','eth0/2'])
-#config=config['enable_interface_config']                      
+#config=config['enable_interface_config']  
+
+# execution to test above function    
+#config = interfaceActions.get_device_interface_list(device_name='192.168.2.21')
+#pprint(config['interface_status_list'])                            
 
 def push_config(device_name:str, config: list):
     ''' This function will push the configuration to the device
@@ -166,11 +146,11 @@ def push_config(device_name:str, config: list):
         return False
 
 # Assume 'ssh_handler' is the device handler
-result = push_config('192.168.2.21', config)
-if result:
-    print("Config successfully pushed to the device.")
-else:
-    print("Failed to push config to the device.")
+#result = push_config('192.168.2.21', config)
+#if result:
+#    print("Config successfully pushed to the device.")
+#else:
+#    print("Failed to push config to the device.")
 
 
 

@@ -8,32 +8,38 @@ CMD_SHOW_RUN_INTERFACE ="show running-config interface {interface}"
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
-class interfaceActions:
+class InterfaceActions:
     def __init__(self, connection, device_name):
         self.connection = connection
         self.device_name = device_name
 
 
-    def get_interface_config(device_name:str, interfaces: list):
+    def get_interface_running_config(device_name:str, interfaces: list):
         ''' This function will get interface running config
             param: device_name or ip as string
-            param: interface/interfaces s as list
+            param: interface/interfaces as list
             result: interfaces_config and interfaces_list in list format'''
         try:
             handler = NetmikoDeviceHandler(device_name)
+            device_interfaces_list=InterfaceActions.get_device_interface_list(device_name)
+            device_interfaces_list=device_interfaces_list['device_interfaces_list']
             connection = handler.connect()
             interfaces_config = []
             interfaces_list = interfaces
             for interface in interfaces:
+                if interface not in device_interfaces_list:
+                    print(f"Interface {interface} not found on the {device_name}")
+                    print(f'List of interfaces available: {device_interfaces_list}')
+                    continue
                 config = connection.send_command(CMD_SHOW_RUN_INTERFACE.format(interface=interface))
                 if config:
                     interfaces_config.append(config)
             if interfaces_config:
                 return {"interfaces_config": interfaces_config, "interfaces_list": interfaces_list} 
             else:
-                return f"Failed to get interface {interface} config"
+                return f"Failed to get {interface} running config"
         except Exception as e:
-            return f'failed to get interface config due to Error: {e}'
+            return f"Failed to get {device_name}: {interface} running config.\n due to an error{e}"
 
 
     def reset_interface_config(interfaces: list):
@@ -108,106 +114,21 @@ class interfaceActions:
         try:
             handler = NetmikoDeviceHandler(device_name)
             connection = handler.connect()
-            interface_list = []
-            interface_ip_list = {}
-            interface_status_list = {}
+            device_interfaces_list = []
+            device_interfaces_ip_list = {}
+            device_interfaces_status_list = {}
             output = connection.send_command('show ip inter brief', use_textfsm=True)
             if output is not None:
                 for item in output:
-                    interface_list.append(item['interface'])
-                    interface_ip_list[item['interface']] = item['ip_address']
-                    interface_status_list[item['interface']] = item['proto']
-                if interface_list:
-                    return {"interface_list": interface_list, "interface_ip_list": interface_ip_list, "interface_status_list": interface_status_list}       
+                    device_interfaces_list.append(item['interface'])
+                    device_interfaces_ip_list[item['interface']] = item['ip_address']
+                    device_interfaces_status_list[item['interface']] = item['proto']
+                if device_interfaces_list:
+                    return {"device_interfaces_list": device_interfaces_list, "device_interfaces_ip_list": device_interfaces_ip_list, "device_interfaces_status_list": device_interfaces_status_list}       
         except Exception as e:
-            return f'failed to get interface list due to Error: {e}' 
+            return f'failed to get interface list due to Error: {e}'
+
 
 ## execution to test above function    
 #config = interfaceActions.get_device_interface_list(device_name='192.168.2.21')
-#pprint(config['interface_status_list'])    
-    
-class InterfaceActions:
-    def __init__(self, connection, device_name):
-        self.connection = connection
-        self.device_name = device_name
-
-    def get_interface_running_config(self, interface: str) -> str:
-        ''' send command to get interface running-config/current config
-            param: device_name 
-            param: interface number "eth0/0"'''
-        try:
-            output = self.connection.send_command(CMD_SHOW_RUN_INTERFACE.format(interface=interface))
-        except Exception as e:
-            logger.exception(f"{self.device_name}: Exception while retriving interface {interface} config.")
-        if output is None:
-            logger.exception("output for who interface is none. interface: {0}".format(interface))
-            raise Exception("output for who interface is none. interface: {0}".format(interface))
-        return output
-    
-
-
-    def get_interface_default_config_set(self, interface: str) -> List[str]:
-        ''' 
-        Generate a list of commands to reset the interface to its default configuration.
-        param: interface: The name of the interface, e.g., "eth0/0"
-        return: A list of commands as strings
-        '''
-        return [
-            f'default interface {interface}',
-            f'interface {interface}',
-            'load-interval 30',
-            'no shutdown'
-        ]
-    
-    #def reset_interface_config(self, interface: str) -> bool:
-    #    ''' 
-    #    Reset the interface configuration to its default state.
-    #    param: interface: The name of the interface, e.g., "eth0/0"
-    #    return: True if the operation was successful, False otherwise
-    #    '''
-    #    try:
-    #        config_set = self.get_interface_default_config_set(interface)
-    #        self.connection.send_config_set(config_set)
-    #        return True
-    #    except Exception as e:
-    #        if '% Interface does not exist' in str(e):
-    #            logger.info(f'{interface} does not exist')
-    #            return False
-    #        logger.exception(f"{self.device_name}: Exception while resetting interface {interface} config.")
-    #        raise
-#
-    def ios_disable_interface(self, interface: str) -> List[str]:
-        ''' 
-        shutdown the interface.
-        param: interface: The name of the interface, e.g., "eth0/0"
-        return: A list of commands as strings
-        '''
-        return [
-            f'interface {interface}',
-            'shutdown'
-        ]
-
-
-
-    def unshut_interface(self, interface: str) -> bool:
-        ''' 
-        un-shutdown/no shutdown the interface.
-        param: interface: The name of the interface, e.g., "eth0/0"
-        return: True if the operation was successful, False otherwise
-        '''
-        try:
-            config_set = [
-            f'interface {interface}',
-            'no shutdown'
-        ]
-            self.connection.send_config_set(config_set)
-            return config_set
-        except Exception as e:
-            if '% Interface does not exist' in str(e):
-                logger.info(f'{interface} does not exist')
-                return False
-            logger.exception(f"{self.device_name}: Exception while shutting interface {interface},")
-            raise
-
-
-
+#pprint(config['interface_status_list'])   
