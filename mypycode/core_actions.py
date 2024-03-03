@@ -1,5 +1,8 @@
 from handler import NetmikoDeviceHandler
 from interface_actions import InterfaceActions
+import datetime
+
+tnow=datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S') 
 
 
 def get_device_facts(device_name: str): 
@@ -99,3 +102,38 @@ def generate_device_base_config(device_name: str):
 # Example usage
 #device_base_config=generate_base_config('RTR01')
 #pprint(device_base_config)
+        
+
+
+
+def device_config_backup():
+    try:
+        # access device_inventory to get devices IP informantion
+        with open (rf'D:\pythoncode\mycode\lab02_pycode\devices_inventory',"r") as rtr_list:  # replace with your path for device inventory.
+            for device in rtr_list:
+                device=device.strip()
+                print(f'\n Connecting to {device}')
+                handler=NetmikoDeviceHandler(device)
+                connection = handler.connect()
+                if connection is not None:
+                    # Execute commands
+                    for command in commands:
+                        output = connection.send_command(command)
+                        print(output,'\n')
+                        filename=(rf"D:\pythoncode\backups\lab02_config_backup_{device}_{tnow}")  # replace with your path keep backup config.
+                        try:
+                            with open(filename, 'w') as save_file:
+                                save_file.write(output)
+                            print(f'Logs saved to {filename}')
+                        except Exception as e:
+                            print(e)        
+                    # Close SSH connection
+                    connection.disconnect()
+    except Exception as e:
+        print(f"Failed to connect to {device}: {e}")
+
+# List of commands to execute
+commands = ["terminal len 0","show run"]
+
+#Excuting function to get logs
+#device_config_backup()
