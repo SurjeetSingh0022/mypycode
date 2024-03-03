@@ -1,0 +1,139 @@
+from handler import NetmikoDeviceHandler
+from interface_actions import InterfaceActions
+import datetime
+
+tnow=datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S') 
+
+
+def get_device_facts(device_name: str): 
+    ''' This function will get device facts 
+        i.e hostname,version,serial number, uptime
+        param: device_name or ip as string
+        result: get hostname,version,serial number, uptime in list format'''
+    try:
+        handler = NetmikoDeviceHandler(device_name)
+        connection = handler.connect()
+        device_facts = []
+        output=connection.send_command('show version',use_textfsm= True)
+        if output is not None:
+            # Itrate over output to get the information
+            for item in output:
+                hostname = item.get('hostname', 'N/A')
+                version = item.get('version', 'N/A')
+                serial = item.get('serial', ['N/A'])[0]
+                uptime = item.get('uptime', ['N/A'])
+                device_facts.append(f'Hostname: {hostname}, Version: {version}, Serial Number: {serial}, uptime: {uptime}')
+            if device_facts:
+                return {"device_facts": device_facts} 
+        else:
+            return f"Failed to get show version output from {device_name}"    
+    except Exception as e:
+        return f'failed to get device facts due to Error: {e}' 
+
+# execution to test above function    
+#config = get_device_facts(device_name='192.168.2.21') 
+#pprint(config)
+    
+    
+def generate_device_base_config(device_name: str):
+    '''This function generates base/minimal config for IOL RTR'''
+    try:
+        device_base_config = []
+        # Ask user to enter device_type
+        device_type = input("Enter your device_type (choose from cisco_iol, cisco_ios, arista_veos, juniper_junos): ")
+        # Validate the user input
+        valid_device_types = ["cisco_iol", "cisco_ios", "arista_veos", "juniper_junos"]
+        if device_type not in valid_device_types:
+            print("Invalid device_type. Please choose from the provided options.")
+        else:
+            print(f"device_type is: {device_type}")
+        # Ask user to enter device management ip address
+        ip_address = input('Enter device management ip eth0_0:')
+        if not ip_address:
+            ip_address = 'dhcp'
+            mask = ''
+        else:
+            mask = 'mask 255.255.255.0'
+        if device_type != "juniper_junos":
+            device_base_config.extend([
+                f'hostname {device_name}',
+                f'username admin privilege 15 secret 5 $1$S/mu$FA6YLsSMa1nkJq.i79/gC1',
+                f'ip domain name vracks.lab.local',
+                f'crypto key generate rsa modulus 4096',
+                f'ip ssh version 2',
+                f'aaa new-model',
+                f'aaa authentication login default local',
+                f'line vty 0 4',
+                f'privilege level 15',
+                f'transport input both',
+            ])
+            if device_type == "cisco_iol":
+                device_base_config.extend([
+                    f'interface eth0/0',
+                    f'description to-cloud',
+                    f'ip address {ip_address} {mask}',
+                    f'no shutdown',
+                    f'do wri',
+                    f'!',
+                ])
+            elif device_type == "cisco_ios":
+                device_base_config.extend([
+                    f'interface fa0/0',
+                    f'description to-cloud',
+                    f'ip address {ip_address} {mask}',
+                    f'no shutdown',
+                    f'do wri',
+                    f'!',
+                ])
+            elif device_type == "arista_veos":
+                device_base_config.extend([
+                    f'interface mgmt1',
+                    f'description to-cloud',
+                    f'ip address {ip_address} {mask}',
+                    f'no shutdown',
+                    f'do wri',
+                    f'!',
+                ])
+        return {"device_base_config": device_base_config}
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+# Example usage
+#device_base_config=generate_base_config('RTR01')
+#pprint(device_base_config)
+        
+
+
+
+def device_config_backup():
+    try:
+        # access device_inventory to get devices IP informantion
+        with open (rf'D:\pythoncode\mycode\lab02_pycode\devices_inventory',"r") as rtr_list:  # replace with your path for device inventory.
+            for device in rtr_list:
+                device=device.strip()
+                print(f'\n Connecting to {device}')
+                handler=NetmikoDeviceHandler(device)
+                connection = handler.connect()
+                if connection is not None:
+                    # Execute commands
+                    for command in commands:
+                        output = connection.send_command(command)
+                        print(output,'\n')
+                        filename=(rf"D:\pythoncode\backups\lab02_config_backup_{device}_{tnow}")  # replace with your path keep backup config.
+                        try:
+                            with open(filename, 'w') as save_file:
+                                save_file.write(output)
+                            print(f'Logs saved to {filename}')
+                        except Exception as e:
+                            print(e)        
+                    # Close SSH connection
+                    connection.disconnect()
+    except Exception as e:
+        print(f"Failed to connect to {device}: {e}")
+
+# List of commands to execute
+commands = ["terminal len 0","show run"]
+
+#Excuting function to get logs
+#device_config_backup()
