@@ -69,22 +69,27 @@ def push_config(device_name:str, config: list):
 
 def device_onboarding_config(device_name, telnet_port):
     TELNET_TIMEOUT= 10
-    tn_handler= ConsoleTelnet.initial_connection(device_name)
+    tn_handler= ConsoleTelnet(device_name, telnet_port)  # Create an instance of ConsoleTelnet
     connection = tn_handler.connect()
     if connection is not None:
-        print(f'Connected to {device_name} on {telnet_port}')
-        with open(f'{device_name}.conf' , 'r') as cmd_file:
+        tn_handler.initial_connection()  # Call initial_connection on the instance, not the class
+        connection.tn.write(b'Configure terminal \n')
+        print(f'Device is in Configuration mode.')
+        with open(rf'D:\gitpycode\working_code\mypycode\{device_name}.conf' , 'r') as cmd_file:
             for cmd in cmd_file.readlines():
                 cmd.strip('\r\n')
-                connection.write(cmd.encode()+ b'\r')
+                config=connection.tn.write(cmd.encode()+ b'\r')  # Call 'write' on the 'tn' attribute of the 'ConsoleTelnet' object
                 time.sleep(2)
+        return True  # Return True if the configuration was successfully pushed
+    else:
+        return False  # Return False if the connection was not successful
 
 # Assume 'Console_Telnet' is the device handler
-result = push_config('rtr04', 32776)
+result = device_onboarding_config('rtr04', 32776)
 if result:
     print("Config successfully pushed to the device.")
 else:
-    print("Failed to push config to the device.")              
+    print("Failed to push config to the device.")             
 
 
 
