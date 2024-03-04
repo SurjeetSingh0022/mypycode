@@ -35,47 +35,58 @@ class NetmikoDeviceHandler:
         
 
 
-import telnetlib
 import time
+from telnetlib import Telnet
 
 class ConsoleTelnet:
     def __init__(self, device_name, telnet_port):
+        self.host='vracks.lab.local'
         self.device_name = device_name
         self.port = telnet_port
-        self.timeout = 120
+        self.timeout = 30
         self.tn = None
 
     def connect(self):
         try:
-            self.tn = telnetlib.Telnet(self.device_name, self.port, self.timeout)
+            self.tn = Telnet(self.host, self.port, self.timeout)
             return self
         except Exception as e:
             print(f"An error occurred: {e}")
             return None
 
-    def intial_connection(self):
+    def initial_connection(self):
         if self.tn is None:
             print("Not connected to the device. Please connect first.")
             return None
         self.tn.write(b"\n")
         self.tn.read_until(b"Would you like to enter the initial configuration dialog? [yes/no]:")
         self.tn.write(b"no\n")
-        time.sleep(5)
+        time.sleep(3)
         self.tn.read_until(b"Press RETURN to get started!")
         self.tn.write(b"\r")
-        if self.tn.read_until(b">") or self.tn.read_until(b"#"):
-            print(f'connected to device')
-            self.tn.write(b"show ip int brief\n")
-            time.sleep(2)
-            output = self.tn.read_very_eager().decode('ascii')
-        self.tn.write(b"exit\n") 
+        if self.tn.read_until(b">"):
+            self.tn.write(b'enable\n') 
+            if self.tn.read_until(b"#"):
+                print(f'Connected Sucessfully to {self.device_name} on {self.port}')
+            else:
+                print(f'Failed to enter enable mode on {self.device_name} on {self.port}')
+        else:
+            print(f'Failed to connect to {self.device_name} on {self.port}')            
+
+#            print(f'connected to device')
+##            self.tn.write(command.encode('ascii'))
+#            self.tn.write(b"\n")
+#            time.sleep(2)
+#            output = self.tn.read_very_eager().decode('ascii')
+#            return output
+#        self.tn.write(b"exit\n") 
+
 
 # Usage:
-handler = ConsoleTelnet('vracks.lab.local','32776')
-connection = handler.connect()
-if connection is not None:
-    output = connection.intial_connection('show ip int brief')
-    print(output)        
+#handler = ConsoleTelnet('rtr01','32776')
+#connection = handler.connect()
+#if connection is not None:
+#    output = connection.initial_connection('show ip int brief')
+#    print(output)
 
-    
 

@@ -1,6 +1,8 @@
 from handler import NetmikoDeviceHandler
+from handler import ConsoleTelnet
 from core_actions import *
 from pprint import pprint
+import time
 
 
 # Example usage
@@ -62,6 +64,33 @@ def push_config(device_name:str, config: list):
 #    print("Config successfully pushed to the device.")
 #else:
 #    print("Failed to push config to the device.")
+    
+
+
+def device_onboarding_config(device_name, telnet_port):
+    TELNET_TIMEOUT= 10
+    tn_handler= ConsoleTelnet(device_name, telnet_port)  # Create an instance of ConsoleTelnet
+    connection = tn_handler.connect()
+    if connection is not None:
+        tn_handler.initial_connection()  # Call initial_connection on the instance, not the class
+        connection.tn.write(b'Configure terminal \n')
+        print(f'Device is in Configuration mode.')
+        with open(rf'D:\gitpycode\working_code\mypycode\{device_name}.conf' , 'r') as cmd_file:
+            for cmd in cmd_file.readlines():
+                cmd.strip('\r\n')
+                config=connection.tn.write(cmd.encode()+ b'\r')  # Call 'write' on the 'tn' attribute of the 'ConsoleTelnet' object
+                time.sleep(2)
+        return True  # Return True if the configuration was successfully pushed
+    else:
+        return False  # Return False if the connection was not successful
+
+# Assume 'Console_Telnet' is the device handler
+result = device_onboarding_config('rtr04', 32776)
+if result:
+    print("Config successfully pushed to the device.")
+else:
+    print("Failed to push config to the device.")             
+
 
 
 
