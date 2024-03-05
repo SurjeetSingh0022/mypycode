@@ -35,16 +35,15 @@ class NetmikoDeviceHandler:
         
 
 
-import time
-from telnetlib import Telnet
-
 class ConsoleTelnet:
     def __init__(self, device_name, telnet_port):
         self.host='vracks.lab.local'
         self.device_name = device_name
         self.port = telnet_port
-        self.timeout = 30
+        self.timeout = 10
         self.tn = None
+        self.username = username
+        self.password = password
 
     def connect(self):
         try:
@@ -52,12 +51,11 @@ class ConsoleTelnet:
             return self
         except Exception as e:
             print(f"An error occurred: {e}")
-            return None
+            raise
 
     def initial_connection(self):
         if self.tn is None:
-            print("Not connected to the device. Please connect first.")
-            return None
+            raise Exception("Not connected to the device. Please connect first.")
         self.tn.write(b"\n")
         self.tn.read_until(b"Would you like to enter the initial configuration dialog? [yes/no]:")
         self.tn.write(b"no\n")
@@ -69,37 +67,38 @@ class ConsoleTelnet:
             if self.tn.read_until(b"#"):
                 print(f'Connected Sucessfully to {self.device_name} on {self.port}')
             else:
-                print(f'Failed to enter enable mode on {self.device_name} on {self.port}')
+                raise Exception(f'Failed to enter enable mode on {self.device_name} on {self.port}')
         else:
-            print(f'Failed to connect to {self.device_name} on {self.port}')  
+            raise Exception(f'Failed to connect to {self.device_name} on {self.port}')  
 
     def send_command(self,command):
         if self.tn is None:
-            print("Not connected to the device. Please connect first.")
-            return None
-        self.tn.write(b"\n")
+            raise Exception("Not connected to the device. Please connect first.")
         self.tn.write(b"\r")
-        if self.tn.read_until(b">"):
-            self.tn.write(b'enable\n') 
-            if self.tn.read_until(b"#"):
-                print(f'Connected Sucessfully to {self.device_name} on {self.port}')
-            else:
-                print(f'Failed to enter enable mode on {self.device_name} on {self.port}')
-        else:
-            print(f'device is {self.device_name} is in privilage mode')                  
-            self.tn.write(command.encode('ascii'))
-            self.tn.write(b"\n")
-            time.sleep(2)
-            output = self.tn.read_very_eager().decode('ascii')
-            return output
-        self.tn.write(b"exit\n") 
+        self.tn.read_until(b"Username: ")
+        self.tn.write(self.username.encode('ascii') + b"\n")
+        if self.password:
+            self.tn.read_until(b"Password: ")
+            self.tn.write(self.password.encode('ascii') + b"\n")
+            if self.tn.read_until(b">"):
+                self.tn.write(b'enable\n') 
+                if self.tn.read_until(b"#"):
+                    print(f'Connected Sucessfully to {self.device_name} on {self.port}')
+                else:
+                    raise Exception(f'Failed to enter enable mode on {self.device_name} on {self.port}')
+        elif self.tn.read_until(b"#"):
+            print(f'Connected Sucessfully to {self.device_name} on {self.port}')                  
+        self.tn.write(command.encode('ascii'))
+        self.tn.write(b"\n")
+        time.sleep(2)
+        output = self.tn.read_very_eager().decode('ascii')
+        return(output)
 
 
 # Usage:
-#handler = ConsoleTelnet('vracks.lab.local','32769')
-#connection = handler.connect()
-#if connection is not None:
-#    output = connection.send_command('show ip int brief')
-#    print(output)
+handler = ConsoleTelnet('vracks.lab.local','32769')
+connection = handler.connect()
+if connection is not None:
+    output = connection.send_command('show ip int brief')
 
-
+print(output)
