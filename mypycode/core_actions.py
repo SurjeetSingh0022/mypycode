@@ -1,6 +1,7 @@
 from handler import NetmikoDeviceHandler
 from interface_actions import InterfaceActions
 import datetime
+from pprint import pprint
 
 tnow=datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S') 
 
@@ -37,7 +38,7 @@ def get_device_facts(device_name: str):
     
 def generate_device_base_config(device_name: str):
     '''This function generates base/minimal config for IOL RTR'''
-    try:
+    try:  
         device_base_config = []
         # Ask user to enter device_type
         device_type = input("Enter your device_type (choose from cisco_iol, cisco_ios, arista_veos, juniper_junos): ")
@@ -53,19 +54,23 @@ def generate_device_base_config(device_name: str):
             ip_address = 'dhcp'
             mask = ''
         else:
-            mask = 'mask 255.255.255.0'
+            mask = '255.255.255.0'
         if device_type != "juniper_junos":
             device_base_config.extend([
                 f'hostname {device_name}',
+                f'no service config',
                 f'username admin privilege 15 secret 5 $1$S/mu$FA6YLsSMa1nkJq.i79/gC1',
                 f'ip domain name vracks.lab.local',
+                f'! ssh config',
                 f'crypto key generate rsa modulus 4096',
                 f'ip ssh version 2',
+                f'! aaa config',
                 f'aaa new-model',
                 f'aaa authentication login default local',
                 f'line vty 0 4',
                 f'privilege level 15',
-                f'transport input both',
+                f'transport input ssh',
+                f'!',
             ])
             if device_type == "cisco_iol":
                 device_base_config.extend([
@@ -94,17 +99,22 @@ def generate_device_base_config(device_name: str):
                     f'do wri',
                     f'!',
                 ])
+        if device_base_config is not None:
+                filename=(rf"D:\gitpycode\working_code\mypycode\device_onboarding_config\{device_name}.conf")  # replace with your path keep backup config.
+                with open(filename, 'w') as save_file:
+                    # Join the list items into a string with each item in a new line
+                    device_base_config_str = '\n'.join(device_base_config)
+                    save_file.write(device_base_config_str)
+                #print(f'Logs saved to {filename})
         return {"device_base_config": device_base_config}
-
     except Exception as e:
         print(f"An error occurred: {e}")
-
-# Example usage
-#device_base_config=generate_base_config('RTR01')
-#pprint(device_base_config)
         
 
-
+# Example usage
+#device_base_config=generate_device_base_config('RTR01')
+#pprint(device_base_config)
+        
 
 def device_config_backup():
     try:
