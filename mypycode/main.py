@@ -66,6 +66,9 @@ def push_config(device_name:str, config: list):
 #    print("Failed to push config to the device.")
     
 
+# Example usage
+#device_base_config=generate_device_base_config('RTR01')
+#pprint(device_base_config)
 
 def device_onboarding_config(device_name, telnet_port):
     TELNET_TIMEOUT= 10
@@ -75,7 +78,10 @@ def device_onboarding_config(device_name, telnet_port):
         tn_handler.initial_connection()  # Call initial_connection on the instance, not the class
         connection.tn.write(b'Configure terminal \n')
         print(f'Device is in Configuration mode.')
-        with open(rf'D:\gitpycode\working_code\mypycode\{device_name}.conf' , 'r') as cmd_file:
+        config=generate_device_base_config(device_name)
+        if config is not None:
+            print(f'device config has been generated for {device_name}')
+        with open(rf'D:\gitpycode\working_code\mypycode\device_onboarding_config\{device_name}.conf' , 'r') as cmd_file:
             for cmd in cmd_file.readlines():
                 cmd.strip('\r\n')
                 config=connection.tn.write(cmd.encode()+ b'\r')  # Call 'write' on the 'tn' attribute of the 'ConsoleTelnet' object
@@ -85,7 +91,7 @@ def device_onboarding_config(device_name, telnet_port):
         return False  # Return False if the connection was not successful
 
 # Assume 'Console_Telnet' is the device handler
-result = device_onboarding_config('rtr04', 32776)
+result = device_onboarding_config('rtr02', 32770)
 if result:
     print("Config successfully pushed to the device.")
 else:

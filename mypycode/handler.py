@@ -71,22 +71,35 @@ class ConsoleTelnet:
             else:
                 print(f'Failed to enter enable mode on {self.device_name} on {self.port}')
         else:
-            print(f'Failed to connect to {self.device_name} on {self.port}')            
+            print(f'Failed to connect to {self.device_name} on {self.port}')  
 
-#            print(f'connected to device')
-##            self.tn.write(command.encode('ascii'))
-#            self.tn.write(b"\n")
-#            time.sleep(2)
-#            output = self.tn.read_very_eager().decode('ascii')
-#            return output
-#        self.tn.write(b"exit\n") 
+    def send_command(self,command):
+        if self.tn is None:
+            print("Not connected to the device. Please connect first.")
+            return None
+        self.tn.write(b"\n")
+        self.tn.write(b"\r")
+        if self.tn.read_until(b">"):
+            self.tn.write(b'enable\n') 
+            if self.tn.read_until(b"#"):
+                print(f'Connected Sucessfully to {self.device_name} on {self.port}')
+            else:
+                print(f'Failed to enter enable mode on {self.device_name} on {self.port}')
+        else:
+            print(f'device is {self.device_name} is in privilage mode')                  
+            self.tn.write(command.encode('ascii'))
+            self.tn.write(b"\n")
+            time.sleep(2)
+            output = self.tn.read_very_eager().decode('ascii')
+            return output
+        self.tn.write(b"exit\n") 
 
 
 # Usage:
-#handler = ConsoleTelnet('rtr01','32776')
+#handler = ConsoleTelnet('vracks.lab.local','32769')
 #connection = handler.connect()
 #if connection is not None:
-#    output = connection.initial_connection('show ip int brief')
+#    output = connection.send_command('show ip int brief')
 #    print(output)
 
 
