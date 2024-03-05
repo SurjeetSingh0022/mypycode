@@ -86,12 +86,19 @@ def device_onboarding_config(device_name, telnet_port):
                 cmd.strip('\r\n')
                 config=connection.tn.write(cmd.encode()+ b'\r')  # Call 'write' on the 'tn' attribute of the 'ConsoleTelnet' object
                 time.sleep(2)
+                # Check for syntax errors
+                output = connection.tn.read_until(b'\n', timeout=TELNET_TIMEOUT).decode()
+                if 'Invalid input detected' in output:
+                    print(f'Syntax error in command: {cmd}')
+                    return False
+        print("Config successfully pushed to the device.")
         return True  # Return True if the configuration was successfully pushed
     else:
+        print("Failed to connect to the device.")
         return False  # Return False if the connection was not successful
 
 # Assume 'Console_Telnet' is the device handler
-result = device_onboarding_config('rtr02', 32770)
+result = device_onboarding_config('rtr03', 32771)
 if result:
     print("Config successfully pushed to the device.")
 else:

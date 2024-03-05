@@ -96,9 +96,9 @@ class ConsoleTelnet:
 
 
 # Usage:
-handler = ConsoleTelnet('vracks.lab.local','32769')
-connection = handler.connect()
-if connection is not None:
-    output = connection.send_command('show ip int brief')
-
-print(output)
+#handler = ConsoleTelnet('vracks.lab.local','32769')
+#connection = handler.connect()
+#if connection is not None:
+#    output = connection.send_command('show ip int brief')
+#
+#print(output)
