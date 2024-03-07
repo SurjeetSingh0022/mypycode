@@ -10,11 +10,11 @@ import time
 #pprint(device_base_config)
         
 # Example usage
-#inteface_running_config=InterfaceActions.get_interface_running_config('192.168.2.21',['Ethernet0/1'])
-#pprint(inteface_running_config)        
+#inteface_running_config=InterfaceActions.get_interface_running_config('192.168.2.22',['Ethernet0/1'])
+#pprint(inteface_running_config['interfaces_config'])        
 
 # Example usage
-#config=InterfaceActions.reset_interface_config('192.168.2.21',interfaces=['Ethernet0/4','Ethernet0/2'])
+#config=InterfaceActions.reset_interface_config('192.168.2.22',interfaces=['Ethernet0/4','Ethernet0/2'])
 #config=config['reset_interface_config']
 #pprint(config)
 
@@ -23,8 +23,9 @@ import time
 #print(config)
 
 # Example usage
-#config=interfaceActions.enable_interface(interfaces=['eth0/1','eth0/2'])
-#config=config['enable_interface_config']  
+#config=InterfaceActions.enable_interface('192.168.2.22',interfaces=['Ethernet0/4','Ethernet0/3'])
+#config=config['enable_interface_config'] 
+#pprint(config) 
 
 # Example usage
 # execution to test above function    
@@ -59,18 +60,19 @@ def push_config(device_name:str, config: list):
         return False
 
 # Assume 'ssh_handler' is the device handler
-#result = push_config('192.168.2.21', config)
+#result = push_config('192.168.2.22', config)
 #if result:
 #    print("Config successfully pushed to the device.")
 #else:
 #    print("Failed to push config to the device.")
-    
 
-# Example usage
-#device_base_config=generate_device_base_config('RTR01')
-#pprint(device_base_config)
+
 
 def device_onboarding_config(device_name, telnet_port):
+    ''' This function will perform device onboarding with intial config
+    param: device_name and console port/telnetport
+    param: input management ip address, device_type i.e cisco_iol,cisco_ios
+    result: True or Flase depending config config succeed or not'''
     TELNET_TIMEOUT= 10
     tn_handler= ConsoleTelnet(device_name, telnet_port)  # Create an instance of ConsoleTelnet
     connection = tn_handler.connect()
@@ -86,12 +88,19 @@ def device_onboarding_config(device_name, telnet_port):
                 cmd.strip('\r\n')
                 config=connection.tn.write(cmd.encode()+ b'\r')  # Call 'write' on the 'tn' attribute of the 'ConsoleTelnet' object
                 time.sleep(2)
+                # Check for syntax errors
+                output = connection.tn.read_until(b'\n', timeout=TELNET_TIMEOUT).decode()
+                if 'Invalid input detected' in output:
+                    print(f'Syntax error in command: {cmd}')
+                    return False
+        print("Config successfully pushed to the device.")
         return True  # Return True if the configuration was successfully pushed
     else:
+        print("Failed to connect to the device.")
         return False  # Return False if the connection was not successful
 
 # Assume 'Console_Telnet' is the device handler
-result = device_onboarding_config('rtr02', 32770)
+result = device_onboarding_config('rtr03', 32771)
 if result:
     print("Config successfully pushed to the device.")
 else:

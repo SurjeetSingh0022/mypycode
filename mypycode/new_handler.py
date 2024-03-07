@@ -4,37 +4,6 @@ from telnetlib import Telnet
 import time
 
 
-class NetmikoDeviceHandler:
-    def __init__(self, device_name):
-        self.device_type = 'cisco_ios'
-        self.device_name = device_name
-        self.username = username
-        self.password = password
-
-    def connect(self):
-        device = {
-            'device_type': 'cisco_ios',
-            'ip':   self.device_name,
-            'username': self.username,
-            'password': self.password,
-            "timeout": 120,  # Set a longer initial timeout (adjust as needed)
-            "global_delay_factor": 3,  # Increase the delay factor (adjust as needed)
-        }
-        try:
-            return ConnectHandler(**device)
-        except Exception as e:
-            print(f"An error occurred: {e}")
-            return None
-
-# Usage:
-#handler = NetmikoDeviceHandler('192.168.2.22')
-#connection = handler.connect()
-#if connection is not None:
-#    output = connection.send_command('show ip int brief')
-#    print(output)
-        
-
-
 class ConsoleTelnet:
     def __init__(self, device_name, telnet_port):
         self.host='vracks.lab.local'
@@ -100,5 +69,45 @@ class ConsoleTelnet:
 #connection = handler.connect()
 #if connection is not None:
 #    output = connection.send_command('show ip int brief')
-#
 #print(output)
+
+class NetmikoDeviceHandler:
+    def __init__(self, device_name):
+        self.device_type = 'cisco_ios'
+        self.device_name = device_name
+        self.username = username
+        self.password = password
+        self.connection = None
+
+    def connect(self):
+        device = {
+            'device_type': 'cisco_ios',
+            'ip':   self.device_name,
+            'username': self.username,
+            'password': self.password,
+            "timeout": 10,  # Set a longer initial timeout (adjust as needed)
+            "global_delay_factor": 3,  # Increase the delay factor (adjust as needed)
+        }
+        try:
+            self.connection = ConnectHandler(**device)
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            print("Trying to connect via ConsoleTelnet...")
+            telnet_port=input(f'Enter Telnet Port to connect on console: ')
+            console_telnet = ConsoleTelnet(self.device_name,telnet_port)
+            console_telnet.connect()
+            self.connection = console_telnet
+
+#    def send_command(self, command):
+#        if self.connection is not None:
+#            return self.connection.send_command(command)
+#        else:
+#            raise Exception("Not connected to the device. Please connect first.")
+
+# Usage:
+#handler = NetmikoDeviceHandler('192.168.2.22')
+#handler.connect()
+#output = handler.send_command('show ip int brief')
+#print(output) 
+
+
