@@ -2,6 +2,7 @@ from handler import NetmikoDeviceHandler
 from interface_actions import InterfaceActions
 import datetime
 from pprint import pprint
+import ipaddress
 
 tnow=datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S') 
 
@@ -147,3 +148,67 @@ commands = ["terminal len 0","show run"]
 
 #Excuting function to get logs
 #device_config_backup()
+
+def get_device_lldp_info(device_name: str): 
+    try:
+        handler = NetmikoDeviceHandler(device_name)
+        connection = handler.connect()
+        hostname = connection.find_prompt()[:-1]
+    except Exception as e:
+        return f'Unexpected error occurred while connecting to the device: {device_name} {e}'
+
+    try:
+        device_lldp_info = {}
+        output=connection.send_command('show lldp neighbors',use_textfsm= True)
+    except Exception as e:
+        return f'failed to connect device: {device_name}: {e}'
+
+    if isinstance(output, list):
+        for item in output:
+            remote_device = item.get('neighbor', 'N/A')
+            local_interface = item.get('local_interface', 'N/A')
+            remote_interface = item.get('neighbor_interface', ['N/A'])
+            device_lldp_info[local_interface] = {'device_name': hostname, 'remote_device': remote_device, 'remote_interface': remote_interface}
+        if device_lldp_info:
+            return device_lldp_info
+    else:
+        return f'no lldp neighbor found on {device_name}'
+
+# execution to test above function    
+#config = get_device_lldp_info(device_name='192.168.2.23') 
+#pprint(config)
+
+def create_kustotable(device_name: str):
+    subnet=input(f"Enter WAN Subnet for Your LAB: ")
+    network = ipaddress.ip_network(subnet)
+    addresses = network.hosts()
+    device_lldp_info=get_device_lldp_info(device_name)
+    interface_kusto_dict = {}
+    for interface in device_lldp_info:
+        interface_kusto_dict[interface] = device_lldp_info[interface].copy()  # Copy the existing info
+        interface_kusto_dict[interface]['start_ipv4_addr'] = str(next(addresses))
+        interface_kusto_dict[interface]['end_ipv4_addr'] = str(next(addresses))
+    return interface_kusto_dict
+
+
+def generate_interface_config(device_name: str):
+    interface_kusto_dict= create_kustotable(device_name)
+    interfaces_config=[]
+    interfaces_list=[]
+    for interface, info in interface_kusto_dict.items():
+        interfaces_config.append([
+        f"interface {interface}",
+        f"description Connected to {info['remote_device']} on {info['remote_interface']}",
+        f"ip address {info['start_ipv4_addr']} 255.255.255.252",
+        f"no proxy-arp",
+        f"no ip unreachable",
+        f"load-interval 30",
+        f"no shutdown",
+        f"!"
+        ]) 
+        interfaces_list.append([interface])     
+    return {"interfaces_config": interfaces_config, "interfaces_list": interfaces_list}
+
+config=generate_interface_config('192.168.2.23')
+pprint(config)
+
