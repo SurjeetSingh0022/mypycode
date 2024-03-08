@@ -200,6 +200,9 @@ def generate_interface_config(device_name: str):
         f"interface {interface}",
         f"description Connected to {info['remote_device']} on {info['remote_interface']}",
         f"ip address {info['start_ipv4_addr']} 255.255.255.252",
+        f"no proxy-arp",
+        f"no ip unreachable",
+        f"load-interval 30",
         f"no shutdown",
         f"!"
         ]) 
