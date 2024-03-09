@@ -3,6 +3,7 @@ from interface_actions import InterfaceActions
 import datetime
 from pprint import pprint
 import ipaddress
+import csv
 
 tnow=datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S') 
 
@@ -150,13 +151,12 @@ commands = ["terminal len 0","show run"]
 #device_config_backup()
 
 def get_device_lldp_info(device_name: str): 
-    try:
+    try: 
         handler = NetmikoDeviceHandler(device_name)
         connection = handler.connect()
         hostname = connection.find_prompt()[:-1]
     except Exception as e:
         return f'Unexpected error occurred while connecting to the device: {device_name} {e}'
-
     try:
         device_lldp_info = {}
         output=connection.send_command('show lldp neighbors',use_textfsm= True)
@@ -165,31 +165,58 @@ def get_device_lldp_info(device_name: str):
 
     if isinstance(output, list):
         for item in output:
-            remote_device = item.get('neighbor', 'N/A')
-            local_interface = item.get('local_interface', 'N/A')
-            remote_interface = item.get('neighbor_interface', ['N/A'])
-            device_lldp_info[local_interface] = {'device_name': hostname, 'remote_device': remote_device, 'remote_interface': remote_interface}
+            end_device = item.get('neighbor', 'N/A')
+            start_interface = item.get('local_interface', 'N/A')
+            end_interface = item.get('neighbor_interface', ['N/A'])
+            device_lldp_info[start_interface] = {'start_device': hostname, 'start_interface': start_interface,'end_device': end_device, 'end_interface': end_interface}
         if device_lldp_info:
             return device_lldp_info
     else:
         return f'no lldp neighbor found on {device_name}'
 
-# execution to test above function    
-#config = get_device_lldp_info(device_name='192.168.2.23') 
-#pprint(config)
+def get_all_devices_lldp_info(rtr_list):
+    all_devices_lldp_info = {}
+    for device in rtr_list:
+        device_lldp_info = get_device_lldp_info(device)
+        if isinstance(device_lldp_info, dict):
+            all_devices_lldp_info[device] = device_lldp_info
+        else:
+            print(device_lldp_info)
+    return all_devices_lldp_info
+
+#rtr_list=['192.168.2.21','192.168.2.22','192.168.2.23']
+#all_devices_lldp_info = get_all_devices_lldp_info(rtr_list)
+#pprint(all_devices_lldp_info)
+
+
 
 def create_kustotable(device_name: str):
     subnet=input(f"Enter WAN Subnet for Your LAB: ")
     network = ipaddress.ip_network(subnet)
     addresses = network.hosts()
+    # Specify the CSV file path
+    csv_file_path = r"D:\gitpycode\working_code\mypycode\inventory\device_interface_ip_table.csv"
     device_lldp_info=get_device_lldp_info(device_name)
     interface_kusto_dict = {}
     for interface in device_lldp_info:
         interface_kusto_dict[interface] = device_lldp_info[interface].copy()  # Copy the existing info
         interface_kusto_dict[interface]['start_ipv4_addr'] = str(next(addresses))
         interface_kusto_dict[interface]['end_ipv4_addr'] = str(next(addresses))
+        if interface_kusto_dict is not None:
+            try:
+                # Write data to CSV
+                with open(csv_file_path, 'a', newline='') as csvfile:
+                    fieldnames = list(interface_kusto_dict[next(iter(interface_kusto_dict))].keys())
+                    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                    for key, value in interface_kusto_dict.items():
+                        writer.writerow(value)
+            except Exception as e:
+                return e        
     return interface_kusto_dict
 
+
+interface_kusto_dict=create_kustotable('192.168.2.23')
+print(interface_kusto_dict)
 
 def generate_interface_config(device_name: str):
     interface_kusto_dict= create_kustotable(device_name)
@@ -209,6 +236,6 @@ def generate_interface_config(device_name: str):
         interfaces_list.append([interface])     
     return {"interfaces_config": interfaces_config, "interfaces_list": interfaces_list}
 
-config=generate_interface_config('192.168.2.23')
-pprint(config)
+#config=generate_interface_config('192.168.2.23')
+#pprint(config)
 
