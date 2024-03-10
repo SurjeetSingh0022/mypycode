@@ -95,6 +95,7 @@ def device_onboarding_config(device_name, telnet_port):
                     return False
         print("Config successfully pushed to the device.")
         return True  # Return True if the configuration was successfully pushed
+
     else:
         print("Failed to connect to the device.")
         return False  # Return False if the connection was not successful

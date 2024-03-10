@@ -34,12 +34,17 @@ def get_device_facts(device_name: str):
         return f'failed to get device facts due to Error: {e}' 
 
 # execution to test above function    
-#config = get_device_facts(device_name='192.168.2.21') 
-#pprint(config)
+facts = get_device_facts(device_name='192.168.2.21') 
+pprint(facts)
     
     
 def generate_device_base_config(device_name: str):
-    '''This function generates base/minimal config for IOL RTR'''
+    '''This function generates a base or minimal configuration for network devices.
+    Parameters:
+    device_name (str): The name of the device for which the configuration is to be generated.
+    Returns:
+    dict: A dictionary containing the base configuration for the device.'''
+
     try:  
         device_base_config = []
         # Ask user to enter device_type
@@ -119,6 +124,7 @@ def generate_device_base_config(device_name: str):
         
 
 def device_config_backup():
+    '''This function backs up the configuration of network devices.'''
     try:
         # access device_inventory to get devices IP informantion
         with open (rf'D:\pythoncode\mycode\lab02_pycode\devices_inventory',"r") as rtr_list:  # replace with your path for device inventory.
@@ -150,33 +156,45 @@ commands = ["terminal len 0","show run"]
 #Excuting function to get logs
 #device_config_backup()
 
-def get_device_lldp_info(device_name: str): 
+def get_device_lldp_info(device_name: str):
+    '''
+    Retrieves the Link Layer Discovery Protocol (LLDP) information of a specified network device.
+    Parameters: device_name (str): The name of the network device.
+    Returns:
+    dict: A dictionary containing the LLDP information if successful.
+    str: An error message if an error occurs during the process.
+    '''
     try: 
         handler = NetmikoDeviceHandler(device_name)
         connection = handler.connect()
         hostname = connection.find_prompt()[:-1]
-    except Exception as e:
-        return f'Unexpected error occurred while connecting to the device: {device_name} {e}'
-    try:
-        device_lldp_info = {}
-        output=connection.send_command('show lldp neighbors',use_textfsm= True)
+        if connection is not None:
+            device_lldp_info = {}
+            output=connection.send_command('show lldp neighbors',use_textfsm= True)
+            if isinstance(output, list):
+                for item in output:
+                    end_device = item.get('neighbor', 'N/A')
+                    start_port = item.get('local_interface', 'N/A')
+                    end_port = item.get('neighbor_interface', ['N/A'])
+                    device_lldp_info[start_port] = {'start_device': hostname, 'start_port': start_port,'end_device': end_device, 'end_port': end_port}
+                if device_lldp_info:
+                    return device_lldp_info
+            else:
+                return f'no lldp neighbor found on {hostname}:{device_name}' 
     except Exception as e:
         return f'failed to connect device: {device_name}: {e}'
 
-    if isinstance(output, list):
-        for item in output:
-            end_device = item.get('neighbor', 'N/A')
-            start_port = item.get('local_interface', 'N/A')
-            end_port = item.get('neighbor_interface', ['N/A'])
-            device_lldp_info[start_port] = {'start_device': hostname, 'start_port': start_port,'end_device': end_device, 'end_port': end_port}
-        if device_lldp_info:
-            return device_lldp_info
-    else:
-        return f'no lldp neighbor found on {device_name}'
 
-def get_all_devices_lldp_info(rtr_list):
+def get_all_devices_lldp_info(devices_list):
+    '''
+    Retrieves the Link Layer Discovery Protocol (LLDP) information of a all network devices.
+    Parameters: devices_list (list): The name of the network device.
+    Returns:
+    dict: A dictionary containing the LLDP information if successful.
+    str: An error message if an error occurs during the process.
+    '''
     all_devices_lldp_info = {}
-    for device in rtr_list:
+    for device in devices_list:
         device_lldp_info = get_device_lldp_info(device)
         if isinstance(device_lldp_info, dict):
             for start_port, lldp_info in device_lldp_info.items():
@@ -186,17 +204,24 @@ def get_all_devices_lldp_info(rtr_list):
                 if connection_id not in all_devices_lldp_info:
                     all_devices_lldp_info[connection_id] = lldp_info
         else:
-            print(device_lldp_info)
+            return (f'lldp information not found.')            
     return all_devices_lldp_info
 
 
-#rtr_list=['192.168.2.21','192.168.2.22','192.168.2.23']
-#all_devices_lldp_info = get_all_devices_lldp_info(rtr_list)
+#devices_list=['192.168.2.21']
+#all_devices_lldp_info = get_all_devices_lldp_info(devices_list)
 #pprint(all_devices_lldp_info)
 
 
 
 def create_kustotable(device_name: str):
+    """
+    This function creates a dictionary of interface information for a given device and writes it to a CSV file.
+    Parameters:
+    device_name (str): The name of the device for which the interface information is to be fetched and stored.
+    Returns:
+    dict: A dictionary containing the interface information for the given device.
+    """
     subnet=input(f"Enter WAN Subnet for Your LAB: ")
     network = ipaddress.ip_network(subnet)
     addresses = network.hosts()
@@ -221,10 +246,17 @@ def create_kustotable(device_name: str):
     return interface_kusto_dict
 
 
-#interface_kusto_dict=create_kustotable('192.168.2.23')
+#nterface_kusto_dict=create_kustotable('192.168.2.23')
 #print(interface_kusto_dict)
 
-def create_kustotable_for_all_devices(rtr_list):
+def create_kustotable_for_all_devices(device_list):
+    """
+    This function creates a dictionary of interface information for all devices and writes it to a CSV file.
+    Parameters:
+    device_list(lsit): The name of the device for which the interface information is to be fetched and stored.
+    Returns:
+    dict: A dictionary containing the interface information for the given device.
+    """
     # Specify the CSV file path
     csv_file_path = r"D:\gitpycode\working_code\mypycode\inventory\device_interface_ip_table.csv"
     subnet=input(f"Enter WAN Subnet for Your LAB: ")
@@ -264,6 +296,8 @@ def reverse_wiring(row, device_name):
         end_device=row['end_device'].strip()
         end_port=row['end_port'].strip()
         end_ipv4_addr=row['end_ipv4_addr'].strip()
+    else:
+        print(f'wiring is not availabe for this device')    
     return start_device, start_port, start_ipv4_addr, end_device, end_port, end_ipv4_addr
 
 def generate_interface_config(device_name: str):
@@ -302,12 +336,13 @@ def generate_interface_config(device_name: str):
 
                 # Append the interface name to the interfaces_list
                 interfaces_list.append(start_port)
-
+            else:
+                return (f'{device_name} not found in database.')    
     # Return a dictionary containing the interfaces' configurations and list
     return {"interfaces_config": interfaces_config, "interfaces_list": interfaces_list}
 
 # Call the function and print the result
-config = generate_interface_config('rtr01')
-pprint(config)
+#config = generate_interface_config('rtr03')
+#pprint(config)
 
 
