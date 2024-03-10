@@ -166,9 +166,9 @@ def get_device_lldp_info(device_name: str):
     if isinstance(output, list):
         for item in output:
             end_device = item.get('neighbor', 'N/A')
-            start_interface = item.get('local_interface', 'N/A')
-            end_interface = item.get('neighbor_interface', ['N/A'])
-            device_lldp_info[start_interface] = {'start_device': hostname, 'start_interface': start_interface,'end_device': end_device, 'end_interface': end_interface}
+            start_port = item.get('local_interface', 'N/A')
+            end_port = item.get('neighbor_interface', ['N/A'])
+            device_lldp_info[start_port] = {'start_device': hostname, 'start_port': start_port,'end_device': end_device, 'end_port': end_port}
         if device_lldp_info:
             return device_lldp_info
     else:
@@ -179,10 +179,16 @@ def get_all_devices_lldp_info(rtr_list):
     for device in rtr_list:
         device_lldp_info = get_device_lldp_info(device)
         if isinstance(device_lldp_info, dict):
-            all_devices_lldp_info[device] = device_lldp_info
+            for start_port, lldp_info in device_lldp_info.items():
+                # Create a unique identifier for the connection
+                connection_id = tuple(sorted([lldp_info['start_device'] + lldp_info['start_port'], lldp_info['end_device'] + lldp_info['end_port']]))
+                # Check if this connection already exists in the dictionary
+                if connection_id not in all_devices_lldp_info:
+                    all_devices_lldp_info[connection_id] = lldp_info
         else:
             print(device_lldp_info)
     return all_devices_lldp_info
+
 
 #rtr_list=['192.168.2.21','192.168.2.22','192.168.2.23']
 #all_devices_lldp_info = get_all_devices_lldp_info(rtr_list)
@@ -215,8 +221,42 @@ def create_kustotable(device_name: str):
     return interface_kusto_dict
 
 
-interface_kusto_dict=create_kustotable('192.168.2.23')
-print(interface_kusto_dict)
+#interface_kusto_dict=create_kustotable('192.168.2.23')
+#print(interface_kusto_dict)
+
+def create_kustotable_for_all_devices(rtr_list):
+    # Specify the CSV file path
+    csv_file_path = r"D:\gitpycode\working_code\mypycode\inventory\device_interface_ip_table.csv"
+    subnet=input(f"Enter WAN Subnet for Your LAB: ")
+    network = ipaddress.ip_network(subnet)
+    addresses = network.hosts()
+    all_devices_lldp_info = get_all_devices_lldp_info(rtr_list)
+    for connection_id, device_lldp_info in all_devices_lldp_info.items():
+        if isinstance(device_lldp_info, dict):  # Check if device_lldp_info is a dictionary
+            interface_kusto_dict = device_lldp_info.copy()  # Copy the existing info
+            interface_kusto_dict['start_ipv4_addr'] = str(next(addresses))
+            interface_kusto_dict['end_ipv4_addr'] = str(next(addresses))
+            try:
+                # Write data to CSV
+                with open(csv_file_path, 'a', newline='') as csvfile:
+                    fieldnames = list(interface_kusto_dict.keys())
+                    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                    writer.writerow(interface_kusto_dict)
+            except Exception as e:
+                return f'error with csv as {e}'       
+    return "Kusto table created for all devices."
+
+#rtr_list=['192.168.2.21','192.168.2.22','192.168.2.23']
+#print(create_kustotable_for_all_devices(rtr_list))
+
+import csv
+csv_file_path = r"D:\gitpycode\working_code\mypycode\inventory\device_interface_ip_table.csv"
+with open(csv_file_path, 'r') as file:
+    csv_file = csv.DictReader(file)
+    for row in csv_file:
+        pprint(dict(row))
+
+
 
 def generate_interface_config(device_name: str):
     interface_kusto_dict= create_kustotable(device_name)
