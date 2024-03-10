@@ -249,33 +249,65 @@ def create_kustotable_for_all_devices(rtr_list):
 #rtr_list=['192.168.2.21','192.168.2.22','192.168.2.23']
 #print(create_kustotable_for_all_devices(rtr_list))
 
-import csv
-csv_file_path = r"D:\gitpycode\working_code\mypycode\inventory\device_interface_ip_table.csv"
-with open(csv_file_path, 'r') as file:
-    csv_file = csv.DictReader(file)
-    for row in csv_file:
-        pprint(dict(row))
-
-
+def reverse_wiring(row, device_name):
+    if device_name in row['end_device']:
+        start_device=row['end_device'].strip()
+        start_port=row['end_port'].strip()
+        start_ipv4_addr=row['end_ipv4_addr'].strip()
+        end_device=row['start_device'].strip()
+        end_port=row['start_port'].strip()
+        end_ipv4_addr=row['start_ipv4_addr'].strip()
+    elif device_name in row['start_device']:
+        start_device=row['start_device'].strip()
+        start_port=row['start_port'].strip()
+        start_ipv4_addr=row['start_ipv4_addr'].strip()
+        end_device=row['end_device'].strip()
+        end_port=row['end_port'].strip()
+        end_ipv4_addr=row['end_ipv4_addr'].strip()
+    return start_device, start_port, start_ipv4_addr, end_device, end_port, end_ipv4_addr
 
 def generate_interface_config(device_name: str):
-    interface_kusto_dict= create_kustotable(device_name)
-    interfaces_config=[]
-    interfaces_list=[]
-    for interface, info in interface_kusto_dict.items():
-        interfaces_config.append([
-        f"interface {interface}",
-        f"description Connected to {info['remote_device']} on {info['remote_interface']}",
-        f"ip address {info['start_ipv4_addr']} 255.255.255.252",
-        f"no proxy-arp",
-        f"no ip unreachable",
-        f"load-interval 30",
-        f"no shutdown",
-        f"!"
-        ]) 
-        interfaces_list.append([interface])     
+    """
+    This function generates the configuration for a given device's interfaces.
+    It reads the interface details from a CSV file and returns a dictionary containing the configurations and interface list.
+    Parameters:
+    device_name (str): The name of the device for which to generate the configuration.
+    Returns:
+    dict: A dictionary containing the interfaces' configurations and list.
+    """
+    interfaces_config = []
+    interfaces_list = []
+    # Open the CSV file and read its contents
+    csv_file_path = r"D:\gitpycode\working_code\mypycode\inventory\device_interface_ip_table.csv"
+    with open(csv_file_path, 'r') as file:
+        reader = csv.DictReader(file)
+        # Iterate over each row in the CSV file
+        for row in reader:
+            # Remove leading and trailing spaces from keys
+            row = {k.strip(): v for k, v in row.items()}
+            # Check if the device name is present in the start_device or end_device columns
+            if device_name in row['start_device'] or device_name in row['end_device']:
+                # Call the reverse_wiring function to get the interface details
+                start_device, start_port, start_ipv4_addr, end_device, end_port, end_ipv4_addr = reverse_wiring(row, device_name)
+                interfaces_config.append([
+                    f"interface {start_port}",
+                    f"description Connected to {end_device} on {end_port}",
+                    f"ip address {start_ipv4_addr} 255.255.255.252",
+                    f"no proxy-arp",
+                    f"no ip unreachable",
+                    f"load-interval 30",
+                    f"no shutdown",
+                    f"!"
+                ])
+
+                # Append the interface name to the interfaces_list
+                interfaces_list.append(start_port)
+
+    # Return a dictionary containing the interfaces' configurations and list
     return {"interfaces_config": interfaces_config, "interfaces_list": interfaces_list}
 
-#config=generate_interface_config('192.168.2.23')
-#pprint(config)
+# Call the function and print the result
+config = generate_interface_config('rtr01')
+pprint(config)
+
 
