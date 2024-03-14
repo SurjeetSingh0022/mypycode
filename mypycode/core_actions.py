@@ -18,6 +18,12 @@ def get_device_facts(device_name: str):
         connection = handler.connect()
         device_facts = []
         output=connection.send_command('show version',use_textfsm= True)
+        get_interfaces=InterfaceActions.get_device_interface_list(device_name)
+        device_interfaces_ip_list=get_interfaces['device_interfaces_ip_list']
+        # Get the first key in the dictionary
+        Management_IP = list(device_interfaces_ip_list.keys())[0]
+        # Access the value of the first key
+        Management_IP = device_interfaces_ip_list[Management_IP]     
         if output is not None:
             # Itrate over output to get the information
             for item in output:
@@ -25,7 +31,7 @@ def get_device_facts(device_name: str):
                 version = item.get('version', 'N/A')
                 serial = item.get('serial', ['N/A'])[0]
                 uptime = item.get('uptime', ['N/A'])
-                device_facts.append(f'Hostname: {hostname}, Version: {version}, Serial Number: {serial}, uptime: {uptime}')
+                device_facts.append(f'device_name: {hostname}, management_ip: {Management_IP}, version: {version}, serial number: {serial}, uptime: {uptime}')
             if device_facts:
                 return {"device_facts": device_facts} 
         else:
@@ -34,9 +40,10 @@ def get_device_facts(device_name: str):
         return f'failed to get device facts due to Error: {e}' 
 
 # execution to test above function    
-facts = get_device_facts(device_name='192.168.2.21') 
-pprint(facts)
-    
+#facts = get_device_facts(device_name='192.168.2.21') 
+#pprint(facts)
+
+
     
 def generate_device_base_config(device_name: str):
     '''This function generates a base or minimal configuration for network devices.
@@ -71,6 +78,8 @@ def generate_device_base_config(device_name: str):
                 f'! ssh config',
                 f'crypto key generate rsa modulus 4096',
                 f'ip ssh version 2',
+                f'no cdp run',
+                f'lldp run',
                 f'! aaa config',
                 f'aaa new-model',
                 f'aaa authentication login default local',
@@ -84,6 +93,8 @@ def generate_device_base_config(device_name: str):
                     f'interface eth0/0',
                     f'description to-cloud',
                     f'ip address {ip_address} {mask}',
+                    f'no shutdown',
+                    f'interface range eth0/0-3',
                     f'no shutdown',
                     f'do wri',
                     f'!',
