@@ -16,6 +16,7 @@ def get_device_facts(device_name: str):
     try:
         handler = NetmikoDeviceHandler(device_name)
         connection = handler.connect()
+        csv_file_path = r"D:\gitpycode\working_code\mypycode\inventory\lab02_device_inventory.csv"
         device_facts = []
         output=connection.send_command('show version',use_textfsm= True)
         get_interfaces=InterfaceActions.get_device_interface_list(device_name)
@@ -28,20 +29,35 @@ def get_device_facts(device_name: str):
             # Itrate over output to get the information
             for item in output:
                 hostname = item.get('hostname', 'N/A')
-                version = item.get('version', 'N/A')
+                version = item.get('version', 'N/A').split("(")[0]
                 serial = item.get('serial', ['N/A'])[0]
                 uptime = item.get('uptime', ['N/A'])
-                device_facts.append(f'device_name: {hostname}, management_ip: {Management_IP}, version: {version}, serial number: {serial}, uptime: {uptime}')
+                hwsku = item.get('running_image', ['N/A']).split('/')[4]
+                if "L3" in item.get('running_image', ['N/A']).split('/')[6]:
+                    device_type= 'router'
+                elif "L2" in item.get('running_image', ['N/A']).split('/')[6]:
+                    device_type= 'switch'   
+                device_facts.append(f'device_name: {hostname}, management_ip: {Management_IP}, hwsku: {hwsku}, device_type: {device_type}, version: {version}, serial number: {serial}, uptime: {uptime}')
             if device_facts:
-                return {"device_facts": device_facts} 
+                return {"device_facts": device_facts}               
+            if device_facts is not None:
+                print(device_facts)
+                try:
+                    # Write data to CSV
+                    with open(csv_file_path, 'a', newline='') as csvfile:
+                        fieldnames = list(device_facts.keys())
+                        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                        writer.writerow(device_facts)
+                except Exception as e:
+                    return f'error with csv as {e}'
         else:
-            return f"Failed to get show version output from {device_name}"    
+            return f"Failed to get show version output from {device_name}"                    
     except Exception as e:
         return f'failed to get device facts due to Error: {e}' 
 
 # execution to test above function    
-#facts = get_device_facts(device_name='192.168.2.21') 
-#pprint(facts)
+facts = get_device_facts(device_name='192.168.2.21')
+ 
 
 
     
@@ -89,16 +105,29 @@ def generate_device_base_config(device_name: str):
                 f'!',
             ])
             if device_type == "cisco_iol":
-                device_base_config.extend([
-                    f'interface eth0/0',
-                    f'description to-cloud',
-                    f'ip address {ip_address} {mask}',
-                    f'no shutdown',
-                    f'interface range eth0/0-3',
-                    f'no shutdown',
-                    f'do wri',
-                    f'!',
-                ])
+                if "rtr" in device_name.lower():
+                    device_base_config.extend([
+                        f'interface eth0/0',
+                        f'description to-cloud',
+                        f'ip address {ip_address} {mask}',
+                        f'no shutdown',
+                        f'interface range eth0/0-3',
+                        f'no shutdown',
+                        f'do wri',
+                        f'!',
+                    ])
+                if "sw" in device_name.lower():
+                    device_base_config.extend([
+                        f'interface eth0/0',
+                        f'description to-cloud',
+                        f'no switchport',
+                        f'ip address {ip_address} {mask}',
+                        f'no shutdown',
+                        f'interface range eth0/0-3',
+                        f'no shutdown',
+                        f'do wri',
+                        f'!',
+                    ])
             elif device_type == "cisco_ios":
                 device_base_config.extend([
                     f'interface fa0/0',
@@ -130,7 +159,7 @@ def generate_device_base_config(device_name: str):
         
 
 # Example usage
-#device_base_config=generate_device_base_config('RTR01')
+#device_base_config=generate_device_base_config('core-sw01')
 #pprint(device_base_config)
         
 
