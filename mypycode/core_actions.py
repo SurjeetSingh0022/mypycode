@@ -9,24 +9,17 @@ tnow=datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
 
 def get_device_facts(device_name: str): 
-    ''' This function will get device facts 
-        i.e hostname,version,serial number, uptime
-        param: device_name or ip as string
-        result: get hostname,version,serial number, uptime in list format'''
     try:
         handler = NetmikoDeviceHandler(device_name)
         connection = handler.connect()
         csv_file_path = r"D:\gitpycode\working_code\mypycode\inventory\lab02_device_inventory.csv"
-        device_facts = []
+        device_facts = {}
         output=connection.send_command('show version',use_textfsm= True)
         get_interfaces=InterfaceActions.get_device_interface_list(device_name)
         device_interfaces_ip_list=get_interfaces['device_interfaces_ip_list']
-        # Get the first key in the dictionary
         Management_IP = list(device_interfaces_ip_list.keys())[0]
-        # Access the value of the first key
-        Management_IP = device_interfaces_ip_list[Management_IP]     
+        Management_IP = device_interfaces_ip_list[Management_IP]    
         if output is not None:
-            # Itrate over output to get the information
             for item in output:
                 hostname = item.get('hostname', 'N/A')
                 version = item.get('version', 'N/A').split("(")[0]
@@ -37,13 +30,10 @@ def get_device_facts(device_name: str):
                     device_type= 'router'
                 elif "L2" in item.get('running_image', ['N/A']).split('/')[6]:
                     device_type= 'switch'   
-                device_facts.append(f'device_name: {hostname}, management_ip: {Management_IP}, hwsku: {hwsku}, device_type: {device_type}, version: {version}, serial number: {serial}, uptime: {uptime}')
-            if device_facts:
-                return {"device_facts": device_facts}               
+                device_facts = {'device_name': hostname, 'management_ip': Management_IP, 'hwsku': hwsku, 'device_type': device_type, 'version': version, 'serial number': serial, 'uptime': uptime}            
+            print(device_facts)
             if device_facts is not None:
-                print(device_facts)
                 try:
-                    # Write data to CSV
                     with open(csv_file_path, 'a', newline='') as csvfile:
                         fieldnames = list(device_facts.keys())
                         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -55,12 +45,8 @@ def get_device_facts(device_name: str):
     except Exception as e:
         return f'failed to get device facts due to Error: {e}' 
 
-# execution to test above function    
-facts = get_device_facts(device_name='192.168.2.21')
  
 
-
-    
 def generate_device_base_config(device_name: str):
     '''This function generates a base or minimal configuration for network devices.
     Parameters:
