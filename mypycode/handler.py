@@ -57,7 +57,7 @@ class ConsoleTelnet:
         if self.tn is not None:
             self.tn.write(b"\r")
             self.tn.write(b"\n")
-            prompt = self.tn.read_until(b"#", timeout=15)
+            prompt = self.tn.read_until(b"#" or ")#", timeout=15)
             if b"Would you like to enter the initial configuration dialog? [yes/no]:" in prompt:
                 self.tn.write(b"no\n")
                 time.sleep(10)
