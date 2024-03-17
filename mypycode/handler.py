@@ -54,22 +54,28 @@ class ConsoleTelnet:
             raise
 
     def initial_connection(self):
-        if self.tn is None:
-            raise Exception("Not connected to the device. Please connect first.")
-        self.tn.write(b"\n")
-        self.tn.read_until(b"Would you like to enter the initial configuration dialog? [yes/no]:")
-        self.tn.write(b"no\n")
-        time.sleep(3)
-        self.tn.read_until(b"Press RETURN to get started!")
-        self.tn.write(b"\r")
-        if self.tn.read_until(b">"):
-            self.tn.write(b'enable\n') 
-            if self.tn.read_until(b"#"):
+        if self.tn is not None:
+            self.tn.write(b"\r")
+            self.tn.write(b"\n")
+            prompt = self.tn.read_until(b"#", timeout=15)
+            if b"Would you like to enter the initial configuration dialog? [yes/no]:" in prompt:
+                self.tn.write(b"no\n")
+                time.sleep(10)
+                self.tn.write(b'enable\n')
+                prompt = self.tn.read_until(b"#", timeout=15)
+            if b"Press RETURN to get started!" in prompt:
+                self.tn.write(b"\r")
+                prompt = self.tn.read_until(b"#", timeout=5)
+            if b">" in prompt:
+                self.tn.write(b'enable\n')
+                prompt = self.tn.read_until(b"#", timeout=10)
+            if b"#" or b")#"in prompt:
                 print(f'Connected Sucessfully to {self.device_name} on {self.port}')
             else:
-                raise Exception(f'Failed to enter enable mode on {self.device_name} on {self.port}')
+                raise Exception(f'Failed to connect to {self.device_name} on {self.port}')
         else:
-            raise Exception(f'Failed to connect to {self.device_name} on {self.port}')  
+            raise Exception(f'Failed to connect to {self.device_name} on {self.port}')
+
 
     def send_command(self,command):
         if self.tn is None:
@@ -96,9 +102,9 @@ class ConsoleTelnet:
 
 
 # Usage:
-#handler = ConsoleTelnet('vracks.lab.local','32769')
+#handler = ConsoleTelnet('vracks.lab.local','32772')
 #connection = handler.connect()
 #if connection is not None:
-#    output = connection.send_command('show ip int brief')
+#    output = connection.initial_connection()
 #
 #print(output)

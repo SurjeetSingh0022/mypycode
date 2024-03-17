@@ -3,6 +3,7 @@ from handler import ConsoleTelnet
 from core_actions import *
 from pprint import pprint
 import time
+import textfsm
 
 
 # Example usage
@@ -78,6 +79,15 @@ def device_onboarding_config(device_name, telnet_port):
     connection = tn_handler.connect()
     if connection is not None:
         tn_handler.initial_connection()  # Call initial_connection on the instance, not the class
+        if output is not None:
+            for item in output:
+                hwsku = item.get('running_image', ['N/A']).split('/')[4]
+                if hwsku == 'iol':
+                    hwsku = 'cisco_iol'
+                if "L3" in item.get('running_image', ['N/A']).split('/')[6]:
+                    device_type= 'router'
+                elif "L2" in item.get('running_image', ['N/A']).split('/')[6]:
+                    device_type= 'switch'     
         connection.tn.write(b'Configure terminal \n')
         print(f'Device is in Configuration mode.')
         config=generate_device_base_config(device_name)
@@ -95,12 +105,13 @@ def device_onboarding_config(device_name, telnet_port):
                     return False
         print("Config successfully pushed to the device.")
         return True  # Return True if the configuration was successfully pushed
+
     else:
         print("Failed to connect to the device.")
         return False  # Return False if the connection was not successful
-
+    
 # Assume 'Console_Telnet' is the device handler
-result = device_onboarding_config('rtr03', 32771)
+result = device_onboarding_config('rtr02', 32770)
 if result:
     print("Config successfully pushed to the device.")
 else:
