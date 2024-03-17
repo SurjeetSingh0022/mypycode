@@ -4,11 +4,35 @@ import datetime
 from pprint import pprint
 import ipaddress
 import csv
+import ctypes
+import os
+import subprocess
+import sys
 
 tnow=datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S') 
 
 
-def get_device_facts(device_name: str): 
+def update_hostfile(device_facts: str):
+    def is_admin():
+        try:
+            return ctypes.windll.shell32.IsUserAnAdmin()
+        except:
+            return False
+    # Extract the hostname   
+    device_name = device_facts['device_name']
+    management_ip = device_facts['management_ip']
+    new_host_entry = (f'{management_ip}    {device_name}')
+    ## Request admin privileges
+    if not is_admin():
+        ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
+        sys.exit(0)
+    ## Append to the hosts file
+    with open('C:\\Windows\\System32\\drivers\\etc\\hosts', 'a') as hosts_file:
+        print(f'updating system hostfile with for {device_name}') 
+        hosts_file.write(f"\n{new_host_entry}")
+
+
+def update_device_inventory(device_name: str): 
     try:
         handler = NetmikoDeviceHandler(device_name)
         connection = handler.connect()
@@ -31,21 +55,26 @@ def get_device_facts(device_name: str):
                 elif "L2" in item.get('running_image', ['N/A']).split('/')[6]:
                     device_type= 'switch'   
                 device_facts = {'device_name': hostname, 'management_ip': Management_IP, 'hwsku': hwsku, 'device_type': device_type, 'version': version, 'serial number': serial, 'uptime': uptime}            
-            print(device_facts)
             if device_facts is not None:
                 try:
+                    print(f'updating device_inventory for {device_name}')
                     with open(csv_file_path, 'a', newline='') as csvfile:
                         fieldnames = list(device_facts.keys())
                         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
                         writer.writerow(device_facts)
+                        update_hostfile(device_facts)  
                 except Exception as e:
                     return f'error with csv as {e}'
+        if device_facts is not None:
+            return device_facts                  
         else:
             return f"Failed to get show version output from {device_name}"                    
     except Exception as e:
         return f'failed to get device facts due to Error: {e}' 
 
- 
+for i in range(21,26):
+    device_name=(f'192.168.2.{i}')
+    update_device_inventory(device_name)
 
 def generate_device_base_config(device_name: str):
     '''This function generates a base or minimal configuration for network devices.
@@ -199,7 +228,7 @@ def get_device_lldp_info(device_name: str):
             output=connection.send_command('show lldp neighbors',use_textfsm= True)
             if isinstance(output, list):
                 for item in output:
-                    end_device = item.get('neighbor', 'N/A')
+                    end_device = item.get('neighbor', 'N/A').split('.')[0]
                     start_port = item.get('local_interface', 'N/A')
                     end_port = item.get('neighbor_interface', ['N/A'])
                     device_lldp_info[start_port] = {'start_device': hostname, 'start_port': start_port,'end_device': end_device, 'end_port': end_port}
@@ -304,7 +333,7 @@ def create_kustotable_for_all_devices(device_list):
                 return f'error with csv as {e}'       
     return "Kusto table created for all devices."
 
-#rtr_list=['192.168.2.21','192.168.2.22','192.168.2.23']
+#rtr_list=['192.168.2.21','192.168.2.22','192.168.2.23','192.168.2.24','192.168.2.25']
 #print(create_kustotable_for_all_devices(rtr_list))
 
 def reverse_wiring(row, device_name):
@@ -362,13 +391,28 @@ def generate_interface_config(device_name: str):
 
                 # Append the interface name to the interfaces_list
                 interfaces_list.append(start_port)
-            else:
-                return (f'{device_name} not found in database.')    
+    if not interfaces_list:
+        return (f'{device_name} not found in database.') 
     # Return a dictionary containing the interfaces' configurations and list
     return {"interfaces_config": interfaces_config, "interfaces_list": interfaces_list}
 
 # Call the function and print the result
-#config = generate_interface_config('rtr03')
+#config = generate_interface_config('rtr02')
 #pprint(config)
+
+
+def verify_device_in_device_inventory(device_name: str):
+    device_inventory=r'mypycode/inventory/lab02_device_inventory.csv'
+    inventory_device_list=[]
+    with open(device_inventory, mode ='r') as file:
+        csvFile = csv.DictReader(file)
+        for line in csvFile:
+            inventory_device_list.append(line['device_name'])   
+        if device_name not in inventory_device_list:
+            print(f"{device_name} is not found in inventory")
+
+
+
+
 
 

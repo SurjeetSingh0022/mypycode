@@ -1,4 +1,6 @@
 start_device ,start_port ,end_device ,end_port ,start_ipv4_addr ,end_ipv4_addr
-rtr03,Et0/2,rtr02,Et0/2,10.98.21.1,10.98.21.2
-rtr03,Et0/2,rtr02,Et0/2,10.98.21.1,10.98.21.2
-rtr03,Et0/1,rtr01,Et0/1,10.98.21.3,10.98.21.4
+rtr01        ,Et0/1      ,rtr03      ,Et0/1    ,10.98.21.1      ,10.98.21.2
+rtr01        ,Et0/2      ,core-sw01  ,Et0/2    ,10.98.21.3      ,10.98.21.4
+rtr02        ,Et0/2      ,rtr03      ,Et0/2    ,10.98.21.5      ,10.98.21.6
+rtr02        ,Et0/1      ,core-sw02  ,Et0/1    ,10.98.21.7      ,10.98.21.8
+core-sw01    ,Et0/3      ,core-sw02  ,Et0/3    ,10.98.21.9      ,10.98.21.10
