@@ -1,4 +1,0 @@
-start_device ,start_port ,end_device ,end_port ,start_ipv4_addr ,end_ipv4_addr
-rtr03,Et0/2,rtr02,Et0/2,10.98.21.1,10.98.21.2
-rtr03,Et0/2,rtr02,Et0/2,10.98.21.1,10.98.21.2
-rtr03,Et0/1,rtr01,Et0/1,10.98.21.3,10.98.21.4
