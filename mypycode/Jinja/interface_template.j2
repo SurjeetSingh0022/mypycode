@@ -1,0 +1,8 @@
+interface {{start_port}}
+description Connected to {{end_device}} on {{end_port}}
+ip address {{start_ipv4_addr}} 255.255.255.252
+no proxy-arp
+no ip unreachable
+load-interval 30
+no shutdown
+!

@@ -1,7 +1,0 @@
-device_name,management_ip,hwsku,device_type,version,serial number,uptime
-rtr01,192.168.2.21,iol,router,15.4,67108880,"5 hours, 15 minutes"
-rtr01,192.168.2.21,iol,router,15.4,67108880,"5 hours, 15 minutes"
-rtr02,192.168.2.22,iol,router,15.4,67108896,"5 hours, 16 minutes"
-rtr03,192.168.2.23,iol,router,15.4,67108912,"5 hours, 16 minutes"
-core-sw01,192.168.2.24,iol,switch,15.2,67108928,"5 hours, 16 minutes"
-core-sw02,192.168.2.25,iol,switch,15.2,67108944,"5 hours, 16 minutes"

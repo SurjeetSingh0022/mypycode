@@ -8,6 +8,7 @@ import ctypes
 import os
 import subprocess
 import sys
+from jinja2 import Template
 
 tnow=datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S') 
 
@@ -36,7 +37,7 @@ def update_device_inventory(device_name: str):
     try:
         handler = NetmikoDeviceHandler(device_name)
         connection = handler.connect()
-        csv_file_path = r"D:\gitpycode\working_code\mypycode\inventory\lab02_device_inventory.csv"
+        csv_file_path = r"D:\gitpycode\working_code\mypycode\inventory\lab02deviceinventory.csv"
         device_facts = {}
         output=connection.send_command('show version',use_textfsm= True)
         get_interfaces=InterfaceActions.get_device_interface_list(device_name)
@@ -72,9 +73,9 @@ def update_device_inventory(device_name: str):
     except Exception as e:
         return f'failed to get device facts due to Error: {e}' 
 
-for i in range(21,26):
-    device_name=(f'192.168.2.{i}')
-    update_device_inventory(device_name)
+#for i in range(21,26):
+#    device_name=(f'192.168.2.{i}')
+#    update_device_inventory(device_name)
 
 def generate_device_base_config(device_name: str):
     '''This function generates a base or minimal configuration for network devices.
@@ -281,7 +282,7 @@ def create_kustotable(device_name: str):
     network = ipaddress.ip_network(subnet)
     addresses = network.hosts()
     # Specify the CSV file path
-    csv_file_path = r"D:\gitpycode\working_code\mypycode\inventory\device_interface_ip_table.csv"
+    csv_file_path = r"D:\gitpycode\working_code\mypycode\inventory\deviceinterfaceiptable.csv"
     device_lldp_info=get_device_lldp_info(device_name)
     interface_kusto_dict = {}
     for interface in device_lldp_info:
@@ -313,7 +314,7 @@ def create_kustotable_for_all_devices(device_list):
     dict: A dictionary containing the interface information for the given device.
     """
     # Specify the CSV file path
-    csv_file_path = r"D:\gitpycode\working_code\mypycode\inventory\device_interface_ip_table.csv"
+    csv_file_path = r"D:\gitpycode\working_code\mypycode\inventory\deviceinterfaceiptable.csv"
     subnet=input(f"Enter WAN Subnet for Your LAB: ")
     network = ipaddress.ip_network(subnet)
     addresses = network.hosts()
@@ -367,7 +368,7 @@ def generate_interface_config(device_name: str):
     interfaces_config = []
     interfaces_list = []
     # Open the CSV file and read its contents
-    csv_file_path = r"D:\gitpycode\working_code\mypycode\inventory\device_interface_ip_table.csv"
+    csv_file_path = r"D:\gitpycode\working_code\mypycode\inventory\deviceinterfaceiptable.csv"
     with open(csv_file_path, 'r') as file:
         reader = csv.DictReader(file)
         # Iterate over each row in the CSV file
@@ -402,7 +403,7 @@ def generate_interface_config(device_name: str):
 
 
 def verify_device_in_device_inventory(device_name: str):
-    device_inventory=r'mypycode/inventory/lab02_device_inventory.csv'
+    device_inventory=rf'mypycode/inventory/lab02deviceinventory.csv'
     inventory_device_list=[]
     with open(device_inventory, mode ='r') as file:
         csvFile = csv.DictReader(file)
@@ -411,6 +412,50 @@ def verify_device_in_device_inventory(device_name: str):
         if device_name not in inventory_device_list:
             print(f"{device_name} is not found in inventory")
 
+
+from jinja2 import Template
+import csv
+
+def interface_and_ip_table_reader(device_name: str):
+    """
+    This function generates the configuration for a given device's interfaces.
+    It reads the interface details from a CSV file and returns a dictionary containing the configurations and interface list.
+    Parameters:
+    device_name (str): The name of the device for which to generate the configuration.
+    Returns:
+    dict: A dictionary containing the interfaces' configurations and list.
+    """
+    interfaces_config = []
+    interfaces_list = []
+    template_file='mypycode/Jinja/interface_template.j2'
+    # Open the CSV file and read its contents
+    csv_file_path = rf"D:/gitpycode/working_code/mypycode/inventory/deviceinterfaceiptable.csv"
+    with open(csv_file_path, 'r') as file:
+        reader = csv.DictReader(file)
+        # Iterate over each row in the CSV file
+        for row in reader:
+            # Remove leading and trailing spaces from keys
+            row = {k.strip(): v for k, v in row.items()}
+            # Check if the device name is present in the start_device or end_device columns
+            if device_name in row['start_device'] or device_name in row['end_device']:
+                # Call the reverse_wiring function to get the interface details
+                start_device, start_port, start_ipv4_addr, end_device, end_port, end_ipv4_addr = reverse_wiring(row, device_name)
+                row = {'start_port': start_port, 'end_device': end_device, 'end_port': end_port, 'start_ipv4_addr': start_ipv4_addr}
+                print(row)
+                with open(template_file) as f:
+                    cisco_template = Template(f.read(), keep_trailing_newline=True)
+                    cisco_config = cisco_template.render(row)
+                interfaces_config.append(cisco_config)
+                # Append the interface name to the interfaces_list
+                interfaces_list.append(start_port)
+    if not interfaces_list:
+        return (f'{device_name} not found in database.') 
+    # Return a dictionary containing the interfaces' configurations and list
+    return {"interfaces_config": interfaces_config, "interfaces_list": interfaces_list}
+
+# Call the function and print the result
+config = interface_and_ip_table_reader('rtr02')
+pprint(config)
 
 
 
