@@ -1,50 +1,34 @@
+service timestamps debug datetime msec
+service timestamps log datetime msec
+service password-encryption
+!
 hostname {{ hostname }}
 !
-ip domain name {{ domain_name }}
+boot-start-marker
+boot-end-marker
 !
-ntp server 192.168.2.1 prefer
-ntp server 8.8.8.8
+no aaa new-model
+clock timezone IST 5 30
 !
 !
-snmp-server community {{ snmp_community }} RO 6
-snmp-server trap-source GigabitEthernet0/0
-snmp-server location London {{ device_location }}
-{% for trap in snmp_traps -%}
-snmp-server enable traps {{ trap }}
-{%- endfor %}
-snmp-server host 10.10.12.15 {{ snmp_community }} 
-snmp-server host 10.20.12.25 {{ snmp_community }}
+ip domain name lab.local
 !
-{% for vlan in vlans -%}
-vlan {{ vlan.id }}
- name {{ vlan.name }}
-{%- endfor %}
+ip ssh version 2
+! 
+{% block interfaces %}
+{ % endblock %}
 !
-{% for interface in interfaces -%}
-interface {{ interface['name'] }}
-  description {{ interface['description']|upper }}
-  {% if interface['port_type'] == "trunk" -%}
-  switchport mode trunk
-  switchport mode trunk allowed vlan {{ interface['allowed_vlan'] }}
-  {%- else %}
-  switchport mode access
-  switchport access vlan {{ interface['vlan'] }}
-  {%- endif %}
-  no shutdown
 !
-{% endfor -%}
-{% for access_list in access_lists -%}
-access-list 10 remark {{ access_list.remark }}
-access-list 10 permit {{ access_list.acl }}
-{%- endfor %}
-access-list 10 deny any log
+ip forward-protocol nd
+!
+!
+no ip http server
+no ip http secure-server
 !
 line con 0
- exec-timeout 5 0
  logging synchronous
+line aux 0
 line vty 0 4
+ login local
  transport input ssh
- access-class 10 in
-line vty 5 15
- transport input ssh
- access-class 10 in
+!

@@ -337,6 +337,16 @@ def create_kustotable_for_all_devices(device_list):
 #rtr_list=['192.168.2.21','192.168.2.22','192.168.2.23','192.168.2.24','192.168.2.25']
 #print(create_kustotable_for_all_devices(rtr_list))
 
+def verify_device_in_device_inventory(device_name: str):
+    device_inventory=rf'mypycode/inventory/lab02deviceinventory.csv'
+    inventory_device_list=[]
+    with open(device_inventory, mode ='r') as file:
+        csvFile = csv.DictReader(file)
+        for line in csvFile:
+            inventory_device_list.append(line['device_name'])   
+        if device_name not in inventory_device_list:
+            print(f"{device_name} is not found in inventory")
+
 def reverse_wiring(row, device_name):
     if device_name in row['end_device']:
         start_device=row['end_device'].strip()
@@ -355,6 +365,37 @@ def reverse_wiring(row, device_name):
     else:
         print(f'wiring is not availabe for this device')    
     return start_device, start_port, start_ipv4_addr, end_device, end_port, end_ipv4_addr
+
+def interface_and_ip_table_reader(device_name: str):
+    """
+    This function will read the deviceinterfaceiptable.csv.
+    Parameters:
+    device_name (str): The name of the device for which to interface and ip informantion.
+    Returns:
+    dict: A dictionary containing the start_device, start_port, end_device, end_port, start_ipv4addr, end_ipv4addr.
+    """
+    # Open the CSV file and read its contents
+    csv_file_path = rf"D:/gitpycode/working_code/mypycode/inventory/deviceinterfaceiptable.csv"
+    interface_ip_table=[]
+    with open(csv_file_path, 'r') as file:
+        reader = csv.DictReader(file)
+        # Iterate over each row in the CSV file
+        for row in reader:
+            # Remove leading and trailing spaces from keys
+            row = {k.strip(): v for k, v in row.items()}
+            # Check if the device name is present in the start_device or end_device columns
+            if device_name in row['start_device'] or device_name in row['end_device']:
+                # Call the reverse_wiring function to get the interface details
+                start_device, start_port, start_ipv4_addr, end_device, end_port, end_ipv4_addr = reverse_wiring(row, device_name)
+                interface_ip_table.append({'start_device': start_device,'start_port': start_port, 'end_device': end_device, 'end_port': end_port, 'start_ipv4_addr': start_ipv4_addr, 'end_ipv4_addr': end_ipv4_addr})
+        if not interface_ip_table:
+            return (f'{device_name} not found in deviceinterfaceiptable.csv') 
+    # Return a list containing the interfaces' configurations and list
+    return {"interface_ip_table": interface_ip_table}
+
+# Call the function and print the result
+#config = interface_and_ip_table_reader('rtr02')
+#pprint(config)
 
 def generate_interface_config(device_name: str):
     """
@@ -402,24 +443,10 @@ def generate_interface_config(device_name: str):
 #pprint(config)
 
 
-def verify_device_in_device_inventory(device_name: str):
-    device_inventory=rf'mypycode/inventory/lab02deviceinventory.csv'
-    inventory_device_list=[]
-    with open(device_inventory, mode ='r') as file:
-        csvFile = csv.DictReader(file)
-        for line in csvFile:
-            inventory_device_list.append(line['device_name'])   
-        if device_name not in inventory_device_list:
-            print(f"{device_name} is not found in inventory")
-
-
-from jinja2 import Template
-import csv
-
-def interface_and_ip_table_reader(device_name: str):
+def generate_interface_config_with_jinja(device_name: str):
     """
     This function generates the configuration for a given device's interfaces.
-    It reads the interface details from a CSV file and returns a dictionary containing the configurations and interface list.
+    It uses the interface_and_ip_table_reader function to get the interface details and returns a dictionary containing the configurations and interface list.
     Parameters:
     device_name (str): The name of the device for which to generate the configuration.
     Returns:
@@ -427,35 +454,27 @@ def interface_and_ip_table_reader(device_name: str):
     """
     interfaces_config = []
     interfaces_list = []
-    template_file='mypycode/Jinja/interface_template.j2'
-    # Open the CSV file and read its contents
-    csv_file_path = rf"D:/gitpycode/working_code/mypycode/inventory/deviceinterfaceiptable.csv"
-    with open(csv_file_path, 'r') as file:
-        reader = csv.DictReader(file)
-        # Iterate over each row in the CSV file
-        for row in reader:
-            # Remove leading and trailing spaces from keys
-            row = {k.strip(): v for k, v in row.items()}
-            # Check if the device name is present in the start_device or end_device columns
-            if device_name in row['start_device'] or device_name in row['end_device']:
-                # Call the reverse_wiring function to get the interface details
-                start_device, start_port, start_ipv4_addr, end_device, end_port, end_ipv4_addr = reverse_wiring(row, device_name)
-                row = {'start_port': start_port, 'end_device': end_device, 'end_port': end_port, 'start_ipv4_addr': start_ipv4_addr}
-                print(row)
-                with open(template_file) as f:
-                    cisco_template = Template(f.read(), keep_trailing_newline=True)
-                    cisco_config = cisco_template.render(row)
-                interfaces_config.append(cisco_config)
-                # Append the interface name to the interfaces_list
-                interfaces_list.append(start_port)
-    if not interfaces_list:
-        return (f'{device_name} not found in database.') 
+    template_file='mypycode/Jinja/interface_template.j2'  
+    # Call the interface_and_ip_table_reader function to get the interface details
+    interface_ip_table = interface_and_ip_table_reader(device_name)
+    if 'interface_ip_table' not in interface_ip_table:
+        return (f'{device_name} not found in deviceinterfaceiptable.csv') 
+    # Iterate over each row in the interface_ip_table
+    for row in interface_ip_table['interface_ip_table']:
+        row = {'start_port': row['start_port'], 'end_device': row['end_device'], 'end_port': row['end_port'], 'start_ipv4_addr': row['start_ipv4_addr']}
+        with open(template_file) as f:
+            cisco_template = Template(f.read(), keep_trailing_newline=True)
+            interface_config = cisco_template.render(row)
+        interfaces_config.append(interface_config)
+        # Append the interface name to the interfaces_list
+        interfaces_list.append(row['start_port'])
     # Return a dictionary containing the interfaces' configurations and list
     return {"interfaces_config": interfaces_config, "interfaces_list": interfaces_list}
 
+
 # Call the function and print the result
-config = interface_and_ip_table_reader('rtr02')
-pprint(config)
+#config = generate_interface_config_with_jinja('rtr03')
+#pprint(config)
 
 
 
